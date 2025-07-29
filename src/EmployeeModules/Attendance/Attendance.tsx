@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isSameDay } from 'date-fns';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
+import type { ColDef, GridReadyEvent } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
@@ -77,7 +77,7 @@ const AttendanceComponent: React.FC = () => {
     {
       field: "status",
       headerName: "STATUS",
-      cellStyle: (params) => ({
+      cellStyle: (params: any) => ({
         color: params.value === "On Duty" 
           ? "rgba(70, 143, 73, 1)" 
           : params.value === "Off Duty" 

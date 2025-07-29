@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
+import type { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { format, parseISO } from 'date-fns';
@@ -84,16 +84,15 @@ const RequestComponent: React.FC = () => {
   };
 
   const onGridReady = (params: GridReadyEvent) => {
-    const columnApi = params.columnApi;
     const allColumnIds: string[] = [];
     
-    columnApi.getColumns()?.forEach((column) => {
+    params.api.getColumns()?.forEach((column: any) => {
       if (column) {
         allColumnIds.push(column.getColId());
       }
     });
     
-    columnApi.autoSizeColumns(allColumnIds, false);
+    params.api.autoSizeColumns(allColumnIds, false);
     params.api.sizeColumnsToFit();
   };
 
