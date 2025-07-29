@@ -21,6 +21,8 @@ import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/outline';
 const locales = {
   'en-US': require('date-fns/locale/en-US'),
 };
+
+
 const localizer = dateFnsLocalizer({
   format,
   parse,
