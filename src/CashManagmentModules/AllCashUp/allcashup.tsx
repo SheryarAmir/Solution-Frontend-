@@ -60,10 +60,6 @@ const AllCashupComponent: React.FC = () => {
   });
 
   // Initialize grid
-  const gridOptions = {
-    rowSelection: 'multiple',
-  };
-
   const defaultColDef = {
     flex: 1,
     minWidth: 100,
@@ -333,7 +329,6 @@ const AllCashupComponent: React.FC = () => {
           rowData={allCashup}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          gridOptions={gridOptions}
           onGridReady={onGridReady}
           rowSelection="multiple"
           suppressRowClickSelection={true}
@@ -348,7 +343,7 @@ const AllCashupComponent: React.FC = () => {
         className="fixed z-10 inset-0 overflow-y-auto"
       >
         <div className="flex items-center justify-center min-h-screen">
-          <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+          <div className="fixed inset-0 bg-black opacity-30" aria-hidden="true" />
 
           <div className="bg-white rounded-lg max-w-md mx-auto p-6 z-20">
             <Dialog.Title className="text-lg font-bold mb-4">Delete Cashup</Dialog.Title>
