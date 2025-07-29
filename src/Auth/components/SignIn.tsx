@@ -39,6 +39,7 @@ const SignIn: React.FC = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gray-100">
+
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img src={bgImage} alt="Background" className="w-full h-full object-cover" />

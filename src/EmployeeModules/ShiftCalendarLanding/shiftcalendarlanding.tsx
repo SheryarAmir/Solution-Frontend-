@@ -2,12 +2,8 @@ import {
   Calendar,
   dateFnsLocalizer,
   Views,
-  Event as CalendarEvent,
 } from 'react-big-calendar';
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
-import startOfWeek from 'date-fns/startOfWeek';
-import getDay from 'date-fns/getDay';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
 import React, { useEffect, useMemo, useState } from 'react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useForm } from 'react-hook-form';
@@ -16,10 +12,11 @@ import { Fragment } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/outline';
+import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { enUS } from 'date-fns/locale';
 
 const locales = {
-  'en-US': require('date-fns/locale/en-US'),
+  'en-US': enUS,
 };
 
 
@@ -138,7 +135,11 @@ export default function ShiftCalendar() {
       {tab === 'Employees' && (
         <>
           <div className="ag-theme-alpine" style={{ height: 300 }}>
-            <AgGridReact columnDefs={columns} rowData={rowData} pagination={true} />
+            <AgGridReact<any>
+              columnDefs={columns as any}
+              rowData={rowData}
+              pagination={true}
+            />
           </div>
           <button
             className="mt-4 bg-black text-white px-3 py-1 rounded"

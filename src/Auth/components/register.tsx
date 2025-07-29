@@ -512,7 +512,7 @@ export default function Register() {
             <div className="mt-auto text-center pt-4">
               <p className="text-sm opacity-50 inline-block">Have an account?</p>
               <button
-                className="ml-2 w-[100px] h-10 bg-sky-500 text-white font-medium text-base rounded-md hover:bg-primary_blue/90"
+                className="ml-2 w-[100px] h-10 bg-primary_blue text-white font-medium text-base rounded-md hover:bg-primary_blue/90"
                 onClick={login}
               >
                 LOGIN
