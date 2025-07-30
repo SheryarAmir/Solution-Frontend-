@@ -146,8 +146,8 @@ export function CollapsibleSidebar() {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="border-r">
-        <SidebarHeader className="border-b">
+      <Sidebar collapsible="icon" className="pt-16 border-gray-200">
+        <SidebarHeader className="">
           <div className="flex items-center justify-between p-2">
             <SidebarTrigger className="h-8 w-8" />
             <Button variant="ghost" size="icon" className="h-8 w-8">
