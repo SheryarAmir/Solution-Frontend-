@@ -7,6 +7,10 @@ import Dashboard from "../components/Dashboard/DashBord";
 import Layout from "../components/Layout";
 import Debug from "../components/Debug";
 
+
+// commom files
+
+
 // Cash Management Components
 import NewCashUp from "../CashManagmentModules/NewCashUp/newcashup";
 import ViewCashup from "../CashManagmentModules/Viewcashup/viewcashup";

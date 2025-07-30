@@ -73,23 +73,23 @@ const AllPayroll: React.FC = () => {
 
   const columnDefs = [
     {
-      field: "Report_Name",
+      field: "Report_Name" as keyof Payroll,
       headerName: "REPORT NAME",
       checkboxSelection: true,
       headerCheckboxSelection: true,
     },
     {
-      field: "Start_date",
+      field: "Start_date" as keyof Payroll,
       headerName: "START DATE",
       valueFormatter: (params: any) => formatDate(params.value),
     },
     {
-      field: "End_date",
+      field: "End_date" as keyof Payroll,
       headerName: "END DATE",
       valueFormatter: (params: any) => formatDate(params.value),
     },
     {
-      field: "DOWNLOAD",
+      headerName: "DOWNLOAD",
       cellRenderer: "payrollActionCellRenderer",
     },
   ];
