@@ -1,18 +1,18 @@
-export interface Mytype {
+export interface SidebarItem {
   name: string;
   link: string;
   icon: string;
 }
 
-export interface SidebarItem {
+export interface Sidebar {
   name: string;
   pages: string;
   link: string;
   icon: string;
-  children: Mytype[];
+  children: SidebarItem[];
 }
 
-export const SIDEBAR_MENU_ITEMS: SidebarItem[] = [
+export const SIDEBAR_MENU_ITEMS: Sidebar[] = [
   {
     name: "Cash Management",
     pages: "pages1",
@@ -31,12 +31,17 @@ export const SIDEBAR_MENU_ITEMS: SidebarItem[] = [
       },
       {
         name: "Reconciliation",
-        link: "/accounting/reconciliation",
+        link: "/accounting/reconciliation/home",
         icon: "icon-reconciliation icon",
       },
       {
         name: "Reports",
-        link: "/accounting/report",
+        link: "/accounting/report/home",
+        icon: "icon-report icon",
+      },
+      {
+        name: "Safe Summary",
+        link: "/accounting/safesummary",
         icon: "icon-report icon",
       },
     ],
@@ -46,7 +51,55 @@ export const SIDEBAR_MENU_ITEMS: SidebarItem[] = [
     pages: "pages4",
     link: "/integration",
     icon: "icon-integration icon",
-    children: [],
+    children: []
+  },
+  {
+    name: "Employees",
+    pages: "pages2",
+    link: "",
+    icon: "icon-employee icon",
+    children: [
+      {
+        name: "Employees",
+        link: "/emp-management/employees/all-employee",
+        icon: "icon-team icon",
+      },
+      {
+        name: "Shift Calendar",
+        link: "/emp-management/shift-calendar/landing",
+        icon: "icon-payroll icon",
+      },
+      {
+        name: "Attendance",
+        link: "/emp-management/attendance",
+        icon: "icon-rota icon",
+      },
+      {
+        name: "Requests",
+        link: "/emp-management/approvals",
+        icon: "icon-requests icon",
+      },
+      {
+        name: "Leaves",
+        link: "/emp-management/leaves",
+        icon: "icon-leaves icon",
+      },
+      {
+        name: "User Mapping",
+        link: "/emp-management/user-mapping",
+        icon: "icon-profile icon",
+      },
+      {
+        name: "Payroll",
+        link: "/emp-management/payroll/all-payroll",
+        icon: "icon-report icon",
+      },
+      {
+        name: "Profile",
+        link: "/emp-management/profile",
+        icon: "icon-profile icon",
+      },
+    ],
   },
   {
     name: "Settings",
@@ -59,87 +112,6 @@ export const SIDEBAR_MENU_ITEMS: SidebarItem[] = [
         link: "/account",
         icon: "icon-integration icon",
       },
-      {
-        name: "Subscription",
-        link: "/subscription",
-        icon: "icon-payroll icon",
-      },
-    ],
-  },
-  {
-    name: "Employees",
-    pages: "pages2",
-    link: "",
-    icon: "icon-employee icon",
-    children: [
-      {
-        name: "Employees",
-        link: "/emp-management/employees",
-        icon: "icon-team icon",
-      },
-      {
-        name: "Shift Calendar",
-        link: "/emp-management/shift-calendar",
-        icon: "icon-payroll icon",
-      },
-      {
-        name: "Attendance",
-        link: "/emp-management/attendance",
-        icon: "icon-rota icon",
-      },
-      {
-        name: "Requests",
-        link: "/emp-management/requests",
-        icon: "icon-requests icon",
-      },
-      {
-        name: "Leaves",
-        link: "/emp-management/leaves",
-        icon: "icon-leaves icon",
-      },
-      {
-        name: "Payroll",
-        link: "/emp-management/payroll",
-        icon: "icon-report icon",
-      },
-      {
-        name: "Profile",
-        link: "/emp-management/profile",
-        icon: "icon-profile icon",
-      },
-    ],
-  },
-  {
-    name: "Inventory",
-    pages: "pages3",
-    link: "",
-    icon: "icon-stock icon",
-    children: [
-      {
-        name: "Products",
-        link: "/products",
-        icon: "icon-products icon",
-      },
-      {
-        name: "Suppliers",
-        link: "/suppliers",
-        icon: "icon-suppliers icon",
-      },
-      {
-        name: "Purchase Order",
-        link: "/purchaseorder",
-        icon: "icon-purchase icon",
-      },
-      {
-        name: "Invoices",
-        link: "/invoices",
-        icon: "icon-invoices icon",
-      },
-      {
-        name: "Reports",
-        link: "/report",
-        icon: "icon-reports icon",
-      },
-    ],
+    ]
   },
 ]; 
