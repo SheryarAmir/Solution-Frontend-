@@ -1,20 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, LogOut, User, Settings } from "lucide-react"
+import {  LogOut, } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Select,SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
+import RosLogo from "../assets/images/ROS_FINAL-07.png"
 
 export default function ROSHeader() {
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -69,16 +68,12 @@ export default function ROSHeader() {
   }
 
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-6 py-3 fixed z-20">
-      <div className="flex items-center justify-between max-w-full">
+    <header className="w-full bg-white border-b border-gray-200 px-6 py-3 fixed z-50">
+      <div className="flex items-center justify-between max-w-full z-20">
         {/* Logo */}
         <div className="flex items-center">
-          <div className="text-2xl font-bold">
-            <span className="text-blue-600">R</span>
-            <span className="bg-blue-600 text-white rounded-full w-6 h-6 inline-flex items-center justify-center text-sm mx-1">
-              O
-            </span>
-            <span className="text-blue-600">S</span>
+          <div className="">
+         <img src={RosLogo} alt="logo" className="w-20 cursor-pointer"/>
           </div>
         </div>
 
@@ -91,7 +86,7 @@ export default function ROSHeader() {
                 {formatDateTime(currentTime)}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0 z-[9999] bg-white border border-gray-200 shadow-lg" align="end">
               <CalendarComponent mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
             </PopoverContent>
           </Popover>
@@ -101,7 +96,7 @@ export default function ROSHeader() {
             <SelectTrigger className="w-auto border-none shadow-none bg-transparent hover:bg-gray-50">
               <SelectValue placeholder={user.name} />
             </SelectTrigger>
-            <SelectContent align="end">
+            {/* <SelectContent align="end">
               <SelectItem value="profile">
                 <div className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
@@ -120,7 +115,7 @@ export default function ROSHeader() {
                   Logout
                 </div>
               </SelectItem>
-            </SelectContent>
+            </SelectContent> */}
           </Select>
 
           {/* User Avatar with Dropdown */}
@@ -135,28 +130,8 @@ export default function ROSHeader() {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.name}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Calendar className="mr-2 h-4 w-4" />
-                <span>Calendar</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+            <DropdownMenuContent className="w-56 z-[9999] bg-white border border-gray-200 shadow-lg" align="end" forceMount>
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 hover:bg-red-50">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Logout</span>
               </DropdownMenuItem>
