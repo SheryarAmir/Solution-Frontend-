@@ -39,6 +39,7 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "../components/ui/sidebar"
 
 const sidebarData = {
@@ -135,10 +136,22 @@ const sidebarData = {
   },
 }
 
+// Subcomponent for the search button that uses useSidebar inside the provider
+function SidebarSearchButton() {
+  const { state } = useSidebar();
+  if (state !== "expanded") return null;
+  return (
+    <Button variant="ghost" size="icon" className="h-8 w-8">
+      <Search className="h-4 w-4" />
+    </Button>
+  );
+}
+
 export function CollapsibleSidebar() {
   const [cashManagementOpen, setCashManagementOpen] = React.useState(true)
   const [employeesOpen, setEmployeesOpen] = React.useState(true)
   const navigate = useNavigate()
+  // const { state } = useSidebar(); // Get sidebar state (expanded/collapsed)
 
   const handleNavigation = (url: string) => {
     navigate(url)
@@ -146,13 +159,11 @@ export function CollapsibleSidebar() {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="border-r">
-        <SidebarHeader className="border-b">
+      <Sidebar collapsible="icon" className="pt-16 border-gray-200">
+        <SidebarHeader className="">
           <div className="flex items-center justify-between p-2">
             <SidebarTrigger className="h-8 w-8" />
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Search className="h-4 w-4" />
-            </Button>
+            <SidebarSearchButton />
           </div>
         </SidebarHeader>
 
@@ -223,6 +234,7 @@ export function CollapsibleSidebar() {
           </SidebarGroup>
 
           {/* Employees */}
+
           <SidebarGroup>
             <Collapsible open={employeesOpen} onOpenChange={setEmployeesOpen} className="group/collapsible">
               <SidebarMenu>
@@ -255,9 +267,9 @@ export function CollapsibleSidebar() {
         </SidebarContent>
       </Sidebar>
 
-      <SidebarInset>
-        <div className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <h1 className="text-lg font-semibold">Solution Frontend</h1>
+      <SidebarInset className="pt-10" >
+        <div className="flex h-16 shrink-0 items-center gap-2 px-4">
+          {/* <h1 className="text-lg font-semibold">Solution Frontend</h1> */}
         </div>
         <div className="flex flex-1 flex-col">
           <Outlet />

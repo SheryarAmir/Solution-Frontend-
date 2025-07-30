@@ -1,11 +1,16 @@
 import React from 'react';
 import { CollapsibleSidebar } from '../SideBar/siderbar';
+import ROSHeader from './Ros-Header';
+import { SidebarProvider } from '../components/ui/sidebar';
 
 const Layout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <CollapsibleSidebar />
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen bg-gray-50 w-full">
+        <ROSHeader/>
+        <CollapsibleSidebar />
+      </div>
+    </SidebarProvider>
   );
 };
 
