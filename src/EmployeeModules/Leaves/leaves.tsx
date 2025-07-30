@@ -1,960 +1,885 @@
-import React, { useState} from 'react';
-import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Modal } from 'react-bootstrap';
-import { Dialog } from '@headlessui/react';
+"use client"
 
-import { enUS } from 'date-fns/locale';
-
-const locales = {
-  'en-US': enUS,
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
+import type React from "react"
+import { useState } from "react"
+import { format, isSameDay, isAfter } from "date-fns"
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Edit,
+  Trash2,
+  Save,
+  ArrowLeft,
+  Info,
+  TriangleIcon as ExclamationTriangle,
+  X,
+  Check,
+  User,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface LeaveEvent {
-  start: Date;
-  end: Date;
-  status?: string;
-  icon?: string;
-  delete?: string;
-  edit?: string;
-  id?: number;
-  people?: Array<{
-    picture: string;
-    name: string;
-    roll: number;
-    role: string;
-  }>;
+  start: Date
+  end: Date
+  status: "Approved" | "Rejected" | "Pending"
+  icon?: string
+  delete?: string
+  edit?: string
+}
+
+interface Employee {
+  picture: string
+  name: string
+  roll: number
+  role: string
+}
+
+interface EmployeeEvent {
+  id: number
+  start: Date
+  end: Date
+  people: Employee[]
+}
+
+interface VacationForm {
+  startDate: string
+  endDate: string
+  comment: string
+  durationType: "single" | "range"
 }
 
 const LeavesComponent: React.FC = () => {
-  const [viewMode, setViewMode] = useState<string>('My Leaves');
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const [showRequestModal, setShowRequestModal] = useState<boolean>(false);
-  const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showConfirmationModal, setShowConfirmationModal] = useState<boolean>(false);
-  const [showAddConfirmationModal, setShowAddConfirmationModal] = useState<boolean>(false);
-  const [showEditConfirmationModal, setShowEditConfirmationModal] = useState<boolean>(false);
-  
-  const [selectedPeople, setSelectedPeople] = useState<any>(null);
-  const [selectedEvent, setSelectedEvent] = useState<LeaveEvent | null>(null);
-  
-  const [requestForm, setRequestForm] = useState({
-    starttime: '',
-    endtime: '',
-    comment: ''
-  });
-  
-  const [editForm, setEditForm] = useState({
-    startdate: '',
-    enddate: '',
-    comment: ''
-  });
+  const [activeTab, setActiveTab] = useState<"employees" | "my-leaves">("my-leaves")
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeEvent | null>(null)
+  const [editingLeave, setEditingLeave] = useState<any>(null)
+  const [showRequestDialog, setShowRequestDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showEmployeeDialog, setShowEmployeeDialog] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [confirmationType, setConfirmationType] = useState<"request" | "add" | "edit">("request")
 
-  const events: LeaveEvent[] = [
+  const [requestForm, setRequestForm] = useState<VacationForm>({
+    startDate: "",
+    endDate: "",
+    comment: "",
+    durationType: "range",
+  })
+
+  const [editForm, setEditForm] = useState<VacationForm>({
+    startDate: "",
+    endDate: "",
+    comment: "",
+    durationType: "range",
+  })
+
+  // Sample data
+  const [events] = useState<LeaveEvent[]>([
     {
-      start: new Date(2021, 2, 2),
-      end: new Date(2021, 2, 2),
+      start: new Date(2024, 11, 2), // December 2024
+      end: new Date(2024, 11, 2),
       status: "Approved",
-      icon: 'fa fa-check-circle'
     },
     {
-      start: new Date(2021, 2, 10),
-      end: new Date(2021, 2, 10),
+      start: new Date(2024, 11, 10),
+      end: new Date(2024, 11, 10),
       status: "Rejected",
     },
     {
-      start: new Date(2021, 2, 27),
-      end: new Date(2021, 2, 27),
+      start: new Date(2024, 11, 27),
+      end: new Date(2024, 11, 27),
       status: "Approved",
-      icon: 'fa fa-check-circle'
     },
     {
-      start: new Date(2021, 2, 17),
-      end: new Date(2021, 2, 17),
+      start: new Date(2024, 11, 17),
+      end: new Date(2024, 11, 17),
       status: "Pending",
-      delete: "fa fa-trash",
-      edit: "fa fa-pencil-alt"
     },
-    {
-      start: new Date(2021, 3, 27),
-      end: new Date(2021, 3, 27),
-      status: "Approved",
-      icon: 'fa fa-check-circle'
-    },
-    {
-      start: new Date(2021, 4, 23),
-      end: new Date(2021, 4, 23),
-      status: "Approved",
-      icon: 'fa fa-check-circle'
-    },
-  ];
+  ])
 
-  const peopleEvents: LeaveEvent[] = [
+  const [employeeEvents] = useState<EmployeeEvent[]>([
     {
       id: 1,
-      start: new Date(2021, 2, 4),
-      end: new Date(2021, 2, 4),
+      start: new Date(2024, 11, 4), // December 2024
+      end: new Date(2024, 11, 4),
       people: [
         {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(10).jpg",
+          picture: "/placeholder.svg?height=40&width=40",
           name: "charan",
           roll: 102,
-          role: "FOH"
+          role: "FOH",
         },
         {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(12).jpg",
+          picture: "/placeholder.svg?height=40&width=40",
           name: "shrangi",
           roll: 110,
-          role: "BOH"
+          role: "BOH",
         },
         {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(30).jpg",
+          picture: "/placeholder.svg?height=40&width=40",
           name: "ashvita",
           roll: 403,
-          role: "Management"
+          role: "Management",
         },
         {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(15).jpg",
+          picture: "/placeholder.svg?height=40&width=40",
           name: "satya",
           roll: 400,
-          role: "FOH"
-        }
-      ]
+          role: "FOH",
+        },
+      ],
     },
-    {
-      id: 2,
-      start: new Date(2021, 2, 11),
-      end: new Date(2021, 2, 11),
-      people: [
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(10).jpg",
-          name: "charan",
-          roll: 102,
-          role: "FOH"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(12).jpg",
-          name: "shrangi",
-          roll: 110,
-          role: "BOH"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(30).jpg",
-          name: "ashvita",
-          roll: 403,
-          role: "Management"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(15).jpg",
-          name: "satya",
-          roll: 400,
-          role: "FOH"
-        }
-      ]
-    },
-    {
-      id: 3,
-      start: new Date(2021, 2, 26),
-      end: new Date(2021, 2, 26),
-      people: [
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(10).jpg",
-          name: "charan",
-          roll: 102,
-          role: "FOH"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(12).jpg",
-          name: "shrangi",
-          roll: 110,
-          role: "BOH"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(30).jpg",
-          name: "ashvita",
-          roll: 403,
-          role: "Management"
-        }
-      ]
-    },
-    {
-      id: 4,
-      start: new Date(2021, 2, 14),
-      end: new Date(2021, 2, 14),
-      people: [
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(10).jpg",
-          name: "charan",
-          roll: 102,
-          role: "FOH"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(12).jpg",
-          name: "shrangi",
-          roll: 110,
-          role: "BOH"
-        },
-        {
-          picture: "https://mdbootstrap.com/img/Photos/Avatars/img%20(30).jpg",
-          name: "ashvita",
-          roll: 403,
-          role: "Management"
-        }
-      ]
-    },
-  ];
+  ])
+
+  const today = new Date()
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+  const startingDayOfWeek = firstDayOfMonth.getDay()
+
+  const getUpcomingLeave = () => {
+    try {
+      const upcomingLeaves = events.filter((event) => {
+        const eventDate = new Date(event.start)
+        return !isNaN(eventDate.getTime()) && isAfter(eventDate, today)
+      })
+      return upcomingLeaves.length > 0 ? upcomingLeaves[0].start : null
+    } catch (error) {
+      return null
+    }
+  }
+
+  const getDayEvents = (date: Date) => {
+    if (activeTab === "my-leaves") {
+      return events.filter((event) => isSameDay(event.start, date))
+    } else {
+      return employeeEvents.filter((event) => isSameDay(event.start, date))
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return "bg-green-100 text-green-800"
+      case "Rejected":
+        return "bg-red-100 text-red-800"
+      case "Pending":
+        return "bg-gray-100 text-gray-800"
+      default:
+        return "bg-blue-100 text-blue-800"
+    }
+  }
 
   const handleRequestSubmit = () => {
-    setShowRequestModal(false);
-    setShowConfirmationModal(true);
-  };
+    setConfirmationType("request")
+    setShowRequestDialog(false)
+    setShowConfirmDialog(true)
+  }
 
   const handleEditSubmit = () => {
-    setShowEditModal(false);
-    setShowEditConfirmationModal(true);
-  };
+    setConfirmationType("edit")
+    setShowEditDialog(false)
+    setShowConfirmDialog(true)
+  }
 
   const handleAddSubmit = () => {
-    setShowAddModal(false);
-    setShowAddConfirmationModal(true);
-  };
+    setConfirmationType("add")
+    setShowAddDialog(false)
+    setShowConfirmDialog(true)
+  }
 
-  const handleDateChange = (date: Date) => {
-    setCurrentDate(date);
-  };
-
-  const navigate = (action: string) => {
-    if (action === 'PREV') {
-      const newDate = new Date(currentDate);
-      newDate.setMonth(newDate.getMonth() - 1);
-      setCurrentDate(newDate);
-    } else if (action === 'NEXT') {
-      const newDate = new Date(currentDate);
-      newDate.setMonth(newDate.getMonth() + 1);
-      setCurrentDate(newDate);
+  const openEditDialog = (dayData: any) => {
+    const event = dayData.events?.[0]
+    if (event) {
+      setEditingLeave(dayData)
+      try {
+        const eventDate = new Date(event.start)
+        if (!isNaN(eventDate.getTime())) {
+          setEditForm({
+            startDate: format(eventDate, "yyyy-MM-dd"),
+            endDate: format(eventDate, "yyyy-MM-dd"),
+            comment: event.status || "",
+            durationType: "single",
+          })
+        } else {
+          // Fallback to current date if event date is invalid
+          const today = new Date()
+          setEditForm({
+            startDate: format(today, "yyyy-MM-dd"),
+            endDate: format(today, "yyyy-MM-dd"),
+            comment: event.status || "",
+            durationType: "single",
+          })
+        }
+      } catch (error) {
+        // Fallback to current date if there's any error
+        const today = new Date()
+        setEditForm({
+          startDate: format(today, "yyyy-MM-dd"),
+          endDate: format(today, "yyyy-MM-dd"),
+          comment: event.status || "",
+          durationType: "single",
+        })
+      }
+      setShowEditDialog(true)
     }
-  };
+  }
 
-  const eventStyleGetter = (event: LeaveEvent) => {
-    let style = {};
-    if (event.status === 'Approved') {
-      style = {
-        backgroundColor: 'rgba(70, 143, 73, 0.1)',
-        color: '#468F49',
-      };
-    } else if (event.status === 'Pending') {
-      style = {
-        backgroundColor: 'rgba(141, 141, 141, 0.1)',
-        color: '#000000',
-      };
-    } else if (event.status === 'Rejected') {
-      style = {
-        backgroundColor: 'rgba(162, 70, 70, 0.1)',
-        color: '#A24646',
-        opacity: '90%',
-      };
-    } else if (event.people) {
-      style = {
-        backgroundColor: 'rgba(236, 188, 15, 0.1)',
-      };
+  const renderCalendarDays = () => {
+    const days = []
+    const totalCells = Math.ceil((daysInMonth + startingDayOfWeek) / 7) * 7
+
+    // Empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(<div key={`empty-${i}`} className="h-24 border border-gray-200 bg-gray-50"></div>)
     }
-    return { style };
-  };
 
-  const CustomEvent = ({ event }: { event: LeaveEvent }) => {
-    if (viewMode === 'My Leaves') {
-      return (
-        <div className="relative h-full w-full">
-          {event.status && (
-            <div className="absolute bottom-1 left-1 text-xs">
-              {event.icon && <i className={`${event.icon} mr-1`}></i>}
-              <span className="font-bold">{event.status}</span>
-            </div>
-          )}
-          {(event.edit || event.delete) && (
-            <div className="absolute bottom-1 right-1 text-xs">
-              {event.edit && (
-                <i 
-                  className={`${event.edit} mr-1 cursor-pointer hover:text-yellow-500`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedEvent(event);
-                    setShowEditModal(true);
-                  }}
-                ></i>
-              )}
-              {event.delete && (
-                <i 
-                  className={`${event.delete} cursor-pointer hover:text-red-500`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteModal(true);
-                  }}
-                ></i>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <div className="relative h-full w-full">
-          {event.people && (
-            <div className="text-xs px-1">
-              {event.people.slice(0, 2).map((person, index) => (
-                <span key={index} className="font-bold">{person.name}, </span>
-              ))}
-              {event.people.length > 2 && (
-                <span 
-                  className="text-blue-500 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedPeople(event);
-                    setShowModal(true);
-                  }}
-                >
-                  more
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-  };
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+      const isToday = isSameDay(date, today)
+      const dayEvents = getDayEvents(date)
+      const canAddEvent = isAfter(date, today) && dayEvents.length === 0
 
-  const CustomHeader = ({ label }: { label: string }) => {
-    return (
-      <div className="text-center font-bold">
-        {label}
-      </div>
-    );
-  };
-
-  const CustomDay = ({ date }: { date: Date }) => {
-    const today = new Date();
-    const isToday = date.toDateString() === today.toDateString();
-    const hasEvent = [...events, ...peopleEvents].some(
-      e => e.start.toDateString() === date.toDateString()
-    );
-    const isFuture = date > today;
-
-    return (
-      <div className="relative h-full w-full">
-        <div className="absolute top-1 right-1">{date.getDate()}</div>
-        {isToday && (
-          <div className="absolute top-1 left-1 text-xs font-bold">Today</div>
-        )}
-        {!hasEvent && isFuture && (
-          <div className="absolute top-1/2 right-1/2 transform translate-x-1/2 -translate-y-1/2">
-            <i 
-              className="fa fa-plus-circle cursor-pointer"
-              onClick={() => setShowRequestModal(true)}
-            ></i>
+      days.push(
+        <div
+          key={day}
+          className={`h-24 border border-gray-200 relative group ${
+            isToday ? "bg-blue-50" : "bg-white"
+          } ${dayEvents.length > 0 ? getStatusColor(dayEvents[0]?.status || "") : ""}`}
+        >
+          <div className="p-1">
+            <span className="text-sm font-medium">{day}</span>
+            {isToday && (
+              <div className="absolute top-1 right-1">
+                <Badge variant="secondary" className="text-xs">
+                  Today
+                </Badge>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
-  };
 
-  const upcomingLeave = events.find(event => event.start > new Date());
+          {/* Hover add button */}
+          {canAddEvent && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button size="sm" variant="ghost" onClick={() => setShowRequestDialog(true)} className="h-8 w-8 p-0">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* My Leaves Events */}
+          {activeTab === "my-leaves" && dayEvents.length > 0 && (
+            <div className="absolute bottom-1 left-1 right-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1">
+                  {dayEvents[0].status === "Approved" && <Check className="h-3 w-3" />}
+                  <span className="text-xs font-medium">{dayEvents[0].status}</span>
+                </div>
+                {dayEvents[0].status === "Pending" && (
+                  <div className="flex space-x-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openEditDialog({ events: dayEvents, date })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowDeleteDialog(true)} className="h-6 w-6 p-0">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Employee Events */}
+          {activeTab === "employees" && dayEvents.length > 0 && (
+            <div className="absolute bottom-1 left-1 right-1">
+              <div className="text-xs">
+                {(dayEvents[0] as EmployeeEvent).people.slice(0, 2).map((person, idx) => (
+                  <span key={idx} className="mr-1">
+                    {person.name},
+                  </span>
+                ))}
+                {(dayEvents[0] as EmployeeEvent).people.length > 2 && (
+                  <button
+                    onClick={() => {
+                      setSelectedEmployee(dayEvents[0] as EmployeeEvent)
+                      setShowEmployeeDialog(true)
+                    }}
+                    className="text-blue-600 hover:underline"
+                  >
+                    more
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>,
+      )
+    }
+
+    // Fill remaining cells
+    const remainingCells = totalCells - (daysInMonth + startingDayOfWeek)
+    for (let i = 0; i < remainingCells; i++) {
+      days.push(<div key={`empty-end-${i}`} className="h-24 border border-gray-200 bg-gray-50"></div>)
+    }
+
+    return days
+  }
+
+  const upcomingLeave = getUpcomingLeave()
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex flex-wrap justify-between mb-4">
-        <div className="flex items-center">
-          <h4 className="mr-5">Leaves</h4>
-          <div className="flex border rounded overflow-hidden">
-            <button
-              className={`px-4 py-1 ${viewMode === 'Employees' ? 'bg-black text-white' : 'bg-white'}`}
-              onClick={() => setViewMode('Employees')}
-            >
-              Employees
-            </button>
-            <button
-              className={`px-4 py-1 ${viewMode === 'My Leaves' ? 'bg-black text-white' : 'bg-white'}`}
-              onClick={() => setViewMode('My Leaves')}
-            >
-              My Leaves
-            </button>
-          </div>
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div className="flex items-center space-x-4 mb-4 md:mb-0">
+          <h1 className="text-2xl font-bold">Leaves</h1>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "employees" | "my-leaves")}>
+            <TabsList>
+              <TabsTrigger value="employees">Employees</TabsTrigger>
+              <TabsTrigger value="my-leaves">My Leaves</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
-        <div className="flex items-center">
-          {viewMode === 'My Leaves' && (
-            <button 
-              className="btn btn-sm bg-black text-white mr-3"
-              onClick={() => setShowRequestModal(true)}
-            >
-              REQUEST VACATION
-            </button>
+        <div className="flex items-center space-x-3">
+          {activeTab === "my-leaves" ? (
+            <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-black text-white hover:bg-gray-800">REQUEST VACATION</Button>
+              </DialogTrigger>
+            </Dialog>
+          ) : (
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-black text-white hover:bg-gray-800">
+                  <Plus className="h-4 w-4 mr-2" />
+                  ADD VACATION
+                </Button>
+              </DialogTrigger>
+            </Dialog>
           )}
-          {viewMode === 'Employees' && (
-            <button 
-              className="btn btn-sm bg-black text-white mr-3"
-              onClick={() => setShowAddModal(true)}
+
+          {/* Calendar Navigation */}
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
             >
-              <i className="fa fa-plus mr-1"></i> ADD VACATION
-            </button>
-          )}
-          
-          <div className="flex items-center border rounded" style={{ height: '30px', width: '200px' }}>
-            <button 
-              className="px-2"
-              onClick={() => navigate('PREV')}
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="px-4 py-2 text-sm font-medium min-w-[150px] text-center">
+              {format(currentDate, "MMMM yyyy")}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="cursor-pointer"
-                width="20"
-                height="20"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"
-                />
-              </svg>
-            </button>
-            
-            <h3 className="text-sm mx-auto">
-              {format(currentDate, 'MMMM yyyy')}
-            </h3>
-            
-            <button 
-              className="px-2"
-              onClick={() => navigate('NEXT')}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="cursor-pointer"
-                width="20"
-                height="20"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z"
-                />
-              </svg>
-            </button>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
 
-      {viewMode === 'My Leaves' && (
-        <div className="flex flex-wrap justify-between mb-4">
-          <div className="flex">
-            <div className="mr-4">
-              <b>28</b> <br />
-              <small>Total Holidays</small>
+      {/* Stats for My Leaves */}
+      {activeTab === "my-leaves" && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+          <div className="flex space-x-6">
+            <div>
+              <div className="text-2xl font-bold">28</div>
+              <div className="text-sm text-gray-600">Total Holidays</div>
             </div>
-            <div className="mr-4">
-              <b>17</b> <br />
-              <small>Remaining Holidays</small>
+            <div>
+              <div className="text-2xl font-bold">17</div>
+              <div className="text-sm text-gray-600">Remaining Holidays</div>
             </div>
-            <div className="mr-4">
-              <b>11</b> <br />
-              <small>Used Holidays</small>
+            <div>
+              <div className="text-2xl font-bold">11</div>
+              <div className="text-sm text-gray-600">Used Holidays</div>
             </div>
           </div>
-          <div>
-            <b>Upcoming Leave:</b> {upcomingLeave ? format(upcomingLeave.start, 'd MMM yyyy') : 'None'}
-          </div>
+          {upcomingLeave && (
+            <div className="mt-4 md:mt-0">
+              <span className="font-medium">Upcoming Leave: </span>
+              <span>
+                {(() => {
+                  try {
+                    const date = new Date(upcomingLeave)
+                    return !isNaN(date.getTime()) ? format(date, "d MMM yyyy") : "Invalid date"
+                  } catch (error) {
+                    return "Invalid date"
+                  }
+                })()}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="bg-white rounded shadow" style={{ height: '600px' }}>
-        <Calendar
-          localizer={localizer}
-          events={viewMode === 'My Leaves' ? events : peopleEvents}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: '100%' }}
-          date={currentDate}
-          onNavigate={handleDateChange}
-          view={Views.MONTH}
-          components={{
-            event: CustomEvent,
-            month: {
-              header: CustomHeader,
-              dateHeader: ({ date }: { date: Date }) => <CustomDay date={date} />
-            }
-          }}
-          eventPropGetter={eventStyleGetter}
-        />
-      </div>
-
-      {/* People Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg">
-        <Modal.Body>
-          <div className="flex justify-between">
-            <h5>
-              <span onClick={() => setShowModal(false)} className="cursor-pointer mr-2">
-                <i className="fa fa-arrow-left"></i>
-              </span>
-              <b> Employees on Leaves </b>
-              <div className="text-gray-500 ml-5">
-                {selectedPeople && format(selectedPeople.start, 'MMM d, yyyy')}
+      {/* Calendar */}
+      <Card>
+        <CardContent className="p-0">
+          {/* Calendar Header */}
+          <div className="grid grid-cols-7 border-b">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div key={day} className="p-3 text-center font-medium text-gray-600 border-r last:border-r-0">
+                {day}
               </div>
-            </h5>
-            <span 
-              className="btn btn-sm bg-black text-white"
-              onClick={() => {
-                setShowModal(false);
-                setShowAddModal(true);
-              }}
-            >
-              <i className="fa fa-plus"></i> ADD VACATION
-            </span>
+            ))}
           </div>
-          <br />
-          {selectedPeople?.people?.map((person: any, index: number) => (
-            <div key={index} className="flex items-center mb-4">
-              <div className="w-1/12 ml-4">
-                <img
-                  className="rounded-full"
-                  width="30"
-                  height="30"
-                  alt="profile"
-                  src={person.picture}
-                />
-              </div>
-              <div className="w-2/12">{person.name}</div>
-              <div className="w-2/12">{person.roll}</div>
-              <div className="w-3/12">{person.role}</div>
-              <div className="w-3/12">
-                <i className="fas fa-calendar-alt mx-3 cursor-pointer hover:text-blue-500"></i>
-                <i className="fas fa-pencil-alt mx-3 cursor-pointer hover:text-yellow-500"></i>
-                <i className="fas fa-trash mx-3 cursor-pointer hover:text-red-500"></i>
-              </div>
-            </div>
-          ))}
-        </Modal.Body>
-      </Modal>
 
-      {/* Edit Modal */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered size="lg">
-        <Modal.Body>
-          <form>
-            <div className="flex justify-between">
-              <h5>
-                <span onClick={() => setShowEditModal(false)} className="cursor-pointer mr-2">
-                  <i className="fa fa-arrow-left"></i>
-                </span>
-                <b> Request vacation </b>
-                <p className="ml-5">Account balance</p>
-              </h5>
-              <span 
-                className="btn btn-sm bg-black text-white"
-                onClick={() => {
-                  setShowEditModal(false);
-                  handleEditSubmit();
-                }}
-              >
-                <i className="far fa-save mr-1"></i> SAVE
-              </span>
-            </div>
-            <div className="flex ml-3 mb-5">
-              <div className="w-1/4">
-                <b>28</b> <br />
-                <small className="text-xs">Total Holidays</small>
-              </div>
-              <div className="w-1/4">
-                <b>17</b> <br />
-                <small className="text-xs">Holidays Left</small>
-              </div>
-              <div className="w-1/4">
-                <b>11</b> <br />
-                <small className="text-xs">Used Holidays</small>
-              </div>
-            </div>
-            <div className="mb-3">
-              <span className="text-sm ml-3">
-                <i className="fa fa-info-circle fa-xs mr-1"></i> 
-                Shifts that conflict the Vacation period will be set to Open Shifts
-              </span>
-            </div>
-            <hr className="my-2" />
-            <br />
-            <div className="ml-5">
-              <span className="mr-5">
-                <input type="radio" name="test" id="singles" value="Single" />
-                <label htmlFor="singles" className="ml-1">Single Day </label>
-              </span>
-              <span className="mr-5">
-                <input
-                  type="radio"
-                  name="test"
-                  id="multiples"
-                  value="Multiple"
-                  defaultChecked
-                />
-                <label htmlFor="multiples" className="ml-1">Range</label>
-              </span>
-            </div>
-            <br />
-            <div className="ml-5">
-              <input
-                type="date"
-                name="startdate"
-                id="startdate"
-                className="border-b-2 border-gray-300 mr-5"
-                value={editForm.startdate}
-                onChange={(e) => setEditForm({...editForm, startdate: e.target.value})}
-              />
-              <input
-                type="date"
-                name="enddate"
-                id="enddate"
-                className="border-b-2 border-gray-300"
-                value={editForm.enddate}
-                onChange={(e) => setEditForm({...editForm, enddate: e.target.value})}
-              />
-            </div>
-            <div className="ml-5 mt-5">
-              <input
-                type="text"
-                name="comment"
-                id="comment"
-                className="border-b-2 border-gray-300 w-3/4"
-                placeholder="Comments"
-                value={editForm.comment}
-                onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
-              />
-            </div>
-          </form>
-        </Modal.Body>
-      </Modal>
+          {/* Calendar Body */}
+          <div className="grid grid-cols-7">{renderCalendarDays()}</div>
+        </CardContent>
+      </Card>
 
-      {/* Request Vacation Modal */}
-      <Modal show={showRequestModal} onHide={() => setShowRequestModal(false)} centered size="lg">
-        <Modal.Body>
-          <form>
-            <div className="flex justify-between">
-              <h5>
-                <span onClick={() => setShowRequestModal(false)} className="cursor-pointer mr-2">
-                  <i className="fa fa-arrow-left"></i>
-                </span>
-                <b> Request vacation </b>
-                <p className="ml-5">Account balance</p>
-              </h5>
-              <span 
-                className="btn btn-sm bg-black text-white"
-                onClick={() => {
-                  setShowRequestModal(false);
-                  handleRequestSubmit();
-                }}
-              >
-                <i className="far fa-save mr-1"></i> SAVE
-              </span>
-            </div>
-            <div className="flex ml-3 mb-5">
-              <div className="w-1/4">
-                <b>28</b> <br />
-                <small>Total holidays</small>
+      {/* Request Vacation Dialog */}
+      <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Button variant="ghost" size="sm" onClick={() => setShowRequestDialog(false)} className="mr-2 p-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              Request vacation
+            </DialogTitle>
+            <p className="text-sm text-gray-600">Account balance</p>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Stats */}
+            <div className="flex space-x-6">
+              <div>
+                <div className="text-xl font-bold">28</div>
+                <div className="text-xs text-gray-600">Total holidays</div>
               </div>
-              <div className="w-1/4">
-                <b>17</b> <br />
-                <small>holidays left</small>
+              <div>
+                <div className="text-xl font-bold">17</div>
+                <div className="text-xs text-gray-600">holidays left</div>
               </div>
-              <div className="w-1/4">
-                <b>11</b> <br />
-                <small>Used holidays</small>
+              <div>
+                <div className="text-xl font-bold">11</div>
+                <div className="text-xs text-gray-600">Used holidays</div>
               </div>
             </div>
-            <div className="mb-3">
-              <span className="text-sm ml-3">
-                <i className="fa fa-info-circle fa-xs mr-1"></i> 
-                shifts that conflict the vacation period will be set to open shifts
-              </span>
+
+            {/* Info */}
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Info className="h-4 w-4" />
+              <span>shifts that conflict the vacation period will be set to open shifts</span>
             </div>
-            <hr className="my-2" />
-            <br />
-            <div className="ml-5">
-              <span className="mr-5">
-                <input type="radio" name="test" id="singles" value="Single" />
-                <label htmlFor="singles" className="ml-1">Single day </label>
-              </span>
-              <span className="mr-5">
-                <input
-                  type="radio"
-                  name="test"
-                  id="multiples"
-                  value="Multiple"
-                  defaultChecked
+
+            <hr />
+
+            {/* Duration Type */}
+            <RadioGroup
+              value={requestForm.durationType}
+              onValueChange={(value) =>
+                setRequestForm((prev) => ({ ...prev, durationType: value as "single" | "range" }))
+              }
+              className="flex space-x-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="single" id="single" />
+                <Label htmlFor="single">Single day</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="range" id="range" />
+                <Label htmlFor="range">Range</Label>
+              </div>
+            </RadioGroup>
+
+            {/* Date Inputs */}
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <Input
+                  type="date"
+                  value={requestForm.startDate}
+                  onChange={(e) => setRequestForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                  className="border-0 border-b-2 border-gray-300 rounded-none"
                 />
-                <label htmlFor="multiples" className="ml-1">Range</label>
-              </span>
+              </div>
+              {requestForm.durationType === "range" && (
+                <div className="flex-1">
+                  <Input
+                    type="date"
+                    value={requestForm.endDate}
+                    onChange={(e) => setRequestForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                    className="border-0 border-b-2 border-gray-300 rounded-none"
+                  />
+                </div>
+              )}
             </div>
-            <br />
-            <div className="ml-5">
-              <input
-                type="date"
-                name="starttime"
-                id="starttime"
-                className="border-b-2 border-gray-300 mr-5"
-                value={requestForm.starttime}
-                onChange={(e) => setRequestForm({...requestForm, starttime: e.target.value})}
-              />
-              <input
-                type="date"
-                name="endtime"
-                id="endtime"
-                className="border-b-2 border-gray-300"
-                value={requestForm.endtime}
-                onChange={(e) => setRequestForm({...requestForm, endtime: e.target.value})}
-              />
-            </div>
-            <div className="ml-5 mt-5">
-              <input
-                type="text"
-                name="comment"
-                id="comment"
-                className="border-b-2 border-gray-300 w-3/4"
+
+            {/* Comment */}
+            <div>
+              <Input
                 placeholder="comments"
                 value={requestForm.comment}
-                onChange={(e) => setRequestForm({...requestForm, comment: e.target.value})}
+                onChange={(e) => setRequestForm((prev) => ({ ...prev, comment: e.target.value }))}
+                className="border-0 border-b-2 border-gray-300 rounded-none"
               />
             </div>
-          </form>
-        </Modal.Body>
-      </Modal>
 
-      {/* Add Vacation Modal */}
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered size="lg">
-        <Modal.Body>
-          <form>
-            <div className="flex justify-between">
-              <h5>
-                <span onClick={() => setShowAddModal(false)} className="cursor-pointer mr-2">
-                  <i className="fa fa-arrow-left"></i>
-                </span>
-                <b> Add New Vacation </b>
-                <p className="ml-5">Account balance</p>
-              </h5>
-              <span 
-                className="btn btn-sm bg-black text-white"
+            <div className="flex justify-end">
+              <Button onClick={handleRequestSubmit} className="bg-black text-white">
+                <Save className="h-4 w-4 mr-2" />
+                SAVE
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Button variant="ghost" size="sm" onClick={() => setShowEditDialog(false)} className="mr-2 p-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              Request vacation
+            </DialogTitle>
+            <p className="text-sm text-gray-600">Account balance</p>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Stats */}
+            <div className="flex space-x-6">
+              <div>
+                <div className="text-xl font-bold">28</div>
+                <div className="text-xs text-gray-600">Total Holidays</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold">17</div>
+                <div className="text-xs text-gray-600">Holidays Left</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold">11</div>
+                <div className="text-xs text-gray-600">Used Holidays</div>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Info className="h-4 w-4" />
+              <span>Shifts that conflict the Vacation period will be set to Open Shifts</span>
+            </div>
+
+            <hr />
+
+            {/* Duration Type */}
+            <RadioGroup
+              value={editForm.durationType}
+              onValueChange={(value) => setEditForm((prev) => ({ ...prev, durationType: value as "single" | "range" }))}
+              className="flex space-x-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="single" id="edit-single" />
+                <Label htmlFor="edit-single">Single Day</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="range" id="edit-range" />
+                <Label htmlFor="edit-range">Range</Label>
+              </div>
+            </RadioGroup>
+
+            {/* Date Inputs */}
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <Input
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                  className="border-0 border-b-2 border-gray-300 rounded-none"
+                />
+              </div>
+              {editForm.durationType === "range" && (
+                <div className="flex-1">
+                  <Input
+                    type="date"
+                    value={editForm.endDate}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                    className="border-0 border-b-2 border-gray-300 rounded-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Comment */}
+            <div>
+              <Input
+                placeholder="Comments"
+                value={editForm.comment}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, comment: e.target.value }))}
+                className="border-0 border-b-2 border-gray-300 rounded-none"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleEditSubmit} className="bg-black text-white">
+                <Save className="h-4 w-4 mr-2" />
+                SAVE
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Vacation Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Button variant="ghost" size="sm" onClick={() => setShowAddDialog(false)} className="mr-2 p-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              Add New Vacation
+            </DialogTitle>
+            <p className="text-sm text-gray-600">Account balance</p>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Stats */}
+            <div className="flex space-x-6">
+              <div>
+                <div className="text-xl font-bold">28</div>
+                <div className="text-xs text-gray-600">Total holidays</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold">17</div>
+                <div className="text-xs text-gray-600">Holidays left</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold">11</div>
+                <div className="text-xs text-gray-600">Used holidays</div>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Info className="h-4 w-4" />
+              <span>Shifts that conflict the vacation period will be set to open shifts</span>
+            </div>
+
+            <hr />
+
+            {/* Employee Selection */}
+            <div className="space-y-4">
+              <Select>
+                <SelectTrigger className="border-0 border-b-2 border-gray-300 rounded-none">
+                  <SelectValue placeholder="john deo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="john-deo">john deo</SelectItem>
+                </SelectContent>
+              </Select>
+              <Label className="text-sm">Department: Management</Label>
+            </div>
+
+            {/* Duration Type */}
+            <RadioGroup defaultValue="range" className="flex space-x-6">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="single" id="add-single" />
+                <Label htmlFor="add-single">Single day</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="range" id="add-range" />
+                <Label htmlFor="add-range">Range</Label>
+              </div>
+            </RadioGroup>
+
+            {/* Date Inputs */}
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <Input
+                  type="date"
+                  placeholder="start date"
+                  className="border-0 border-b-2 border-gray-300 rounded-none"
+                />
+              </div>
+              <div className="flex-1">
+                <Input
+                  type="date"
+                  placeholder="end date"
+                  className="border-0 border-b-2 border-gray-300 rounded-none"
+                />
+              </div>
+            </div>
+
+            {/* Comment */}
+            <div>
+              <Input placeholder="comments" className="border-0 border-b-2 border-gray-300 rounded-none" />
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleAddSubmit} className="bg-black text-white">
+                <Save className="h-4 w-4 mr-2" />
+                SAVE
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee Details Dialog */}
+      <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Button variant="ghost" size="sm" onClick={() => setShowEmployeeDialog(false)} className="mr-2 p-0">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <DialogTitle>Employees on Leaves</DialogTitle>
+                  {selectedEmployee && (
+                    <p className="text-sm text-gray-600 mt-1">{format(selectedEmployee.start, "MMMM d, yyyy")}</p>
+                  )}
+                </div>
+              </div>
+              <Button
                 onClick={() => {
-                  setShowAddModal(false);
-                  handleAddSubmit();
+                  setShowEmployeeDialog(false)
+                  setShowAddDialog(true)
                 }}
+                className="bg-black text-white"
               >
-                <i className="far fa-save mr-1"></i> SAVE
-              </span>
+                <Plus className="h-4 w-4 mr-2" />
+                ADD VACATION
+              </Button>
             </div>
-            <div className="flex ml-3 mb-5">
-              <div className="w-1/4">
-                <b>28</b> <br />
-                <small>Total holidays</small>
-              </div>
-              <div className="w-1/4">
-                <b>17</b> <br />
-                <small>Holidays left</small>
-              </div>
-              <div className="w-1/4">
-                <b>11</b> <br />
-                <small>Used holidays</small>
-              </div>
-            </div>
-            <div className="mb-3">
-              <span className="text-sm ml-3">
-                <i className="fa fa-info-circle fa-xs mr-1"></i> 
-                Shifts that conflict the vacation period will be set to open shifts
-              </span>
-            </div>
-            <hr className="my-2" />
-            <div className="ml-5">
-              <select
-                name="name"
-                id="name"
-                className="border-b border-black w-4/5"
-              >
-                <option value="john deo">john deo</option>
-              </select>
-              <label className="ml-5 block">
-                Department: Management
-              </label>
-            </div>
-            <div className="mt-5 ml-5">
-              <span className="mr-5">
-                <input type="radio" name="test" id="singles" value="Single" />
-                <label htmlFor="singles" className="ml-1">Single day </label>
-              </span>
-              <span className="mr-5">
-                <input
-                  type="radio"
-                  name="test"
-                  id="multiples"
-                  value="Multiple"
-                  defaultChecked
-                />
-                <label htmlFor="multiples" className="ml-1">Range</label>
-              </span>
-            </div>
-            <br />
-            <div className="ml-5">
-              <input
-                type="date"
-                name="startdate"
-                id="startdate"
-                className="border-b-2 border-gray-300 mr-5"
-              />
-              <input
-                type="date"
-                name="enddate"
-                id="enddate"
-                className="border-b-2 border-gray-300"
-              />
-            </div>
-            <div className="ml-5 mt-5">
-              <input
-                type="text"
-                name="comment"
-                id="comment"
-                className="border-b-2 border-gray-300 w-3/4"
-                placeholder="comments"
-              />
-            </div>
-          </form>
-        </Modal.Body>
-      </Modal>
+          </DialogHeader>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog open={showDeleteModal} onClose={() => setShowDeleteModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md rounded bg-white p-4">
-            <div className="text-right">
-              <i 
-                className="fa fa-times cursor-pointer"
-                onClick={() => setShowDeleteModal(false)}
-              ></i>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center mt-3">
-                <i className="fa fa-exclamation-circle text-3xl mr-2"></i> 
-                <span className="font-bold">Are you sure about cancelling your vacation?</span>
+          <div className="space-y-4">
+            {selectedEmployee?.people.map((person, index) => (
+              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <Avatar>
+                    <AvatarImage src={person.picture || "/placeholder.svg"} alt={person.name} />
+                    <AvatarFallback>
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium">{person.name}</div>
+                    <div className="text-sm text-gray-600">{person.roll}</div>
+                  </div>
+                  <div className="text-sm text-gray-600">{person.role}</div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="ghost">
+                    <Calendar className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <br />
-              <div className="text-left mt-4">
-                Reason <br />
-                <input
-                  type="text"
-                  className="border-b-2 border-black w-full"
-                />
-              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <div className="text-center space-y-4">
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setShowDeleteDialog(false)} className="p-0">
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <br />
-            <div className="text-right">
-              <button
-                className="btn btn-sm bg-black text-white px-4 py-1"
-                onClick={() => setShowDeleteModal(false)}
-              >
+            <div className="flex items-center justify-center space-x-3">
+              <ExclamationTriangle className="h-8 w-8 text-yellow-500" />
+              <span className="text-lg font-medium">Are you sure about cancelling your vacation?</span>
+            </div>
+            <div className="text-left">
+              <Label htmlFor="reason">Reason</Label>
+              <Input id="reason" className="border-0 border-b-2 border-gray-300 rounded-none mt-2" />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowDeleteDialog(false)} className="bg-black text-white">
                 CANCEL VACATION
-              </button>
+              </Button>
             </div>
-          </Dialog.Panel>
-        </div>
+          </div>
+        </DialogContent>
       </Dialog>
 
-      {/* Vacation Request Confirmation Modal */}
-      <Dialog open={showConfirmationModal} onClose={() => setShowConfirmationModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md rounded bg-white p-4">
-            <div className="text-center">
-              <h6 className="mt-4">Vacation request has been made</h6>
-              {requestForm.starttime === requestForm.endtime ? (
-                <b>{format(new Date(requestForm.starttime), 'dd MMM yyyy')}</b>
-              ) : (
-                <b>
-                  {format(new Date(requestForm.starttime), 'dd MMM yyyy')} To{' '}
-                  {format(new Date(requestForm.endtime), 'dd MMM yyyy')}
-                </b>
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <div className="text-center space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">
+                {confirmationType === "request" && "Vacation request has been made"}
+                {confirmationType === "edit" && "Vacation request has been made"}
+                {confirmationType === "add" && "Successfully vacation is added"}
+              </h3>
+              {(confirmationType === "request" || confirmationType === "edit") && (
+                <div className="font-medium">
+                  {(() => {
+                    const startDate = confirmationType === "request" ? requestForm.startDate : editForm.startDate
+                    const endDate = confirmationType === "request" ? requestForm.endDate : editForm.endDate
+
+                    if (!startDate) return null
+
+                    try {
+                      const start = new Date(startDate)
+                      const end = endDate ? new Date(endDate) : start
+
+                      if (isNaN(start.getTime()) || (endDate && isNaN(end.getTime()))) {
+                        return <span>Invalid date</span>
+                      }
+
+                      if (startDate === endDate || !endDate) {
+                        return <span>{format(start, "dd MMM yyyy")}</span>
+                      } else {
+                        return (
+                          <span>
+                            {format(start, "dd MMM yyyy")} To {format(end, "dd MMM yyyy")}
+                          </span>
+                        )
+                      }
+                    } catch (error) {
+                      return <span>Invalid date</span>
+                    }
+                  })()}
+                </div>
               )}
-              <br />
             </div>
-            <br />
-            <div className="text-center">
-              <button
-                className="btn btn-sm bg-black text-white px-4 py-1"
-                onClick={() => setShowConfirmationModal(false)}
-              >
-                VIEW VACATION CALENDAR
-              </button>
-            </div>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-
-      {/* Vacation Add Confirmation Modal */}
-      <Dialog open={showAddConfirmationModal} onClose={() => setShowAddConfirmationModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md rounded bg-white p-4">
-            <div className="text-center">
-              <h6 className="mt-4">Successfully vacation is added</h6>
-              <br />
-            </div>
-            <br />
-            <div className="text-center">
-              <button
-                className="btn btn-sm bg-black text-white px-4 py-1"
-                onClick={() => setShowAddConfirmationModal(false)}
-              >
-                VIEW VACATION CALENDAR
-              </button>
-            </div>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-
-      {/* Vacation Edit Confirmation Modal */}
-      <Dialog open={showEditConfirmationModal} onClose={() => setShowEditConfirmationModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md rounded bg-white p-4">
-            <div className="text-center">
-              <h6 className="mt-4">Vacation request has been made</h6>
-              {editForm.startdate === editForm.enddate ? (
-                <b>{format(new Date(editForm.startdate), 'dd MMM yyyy')}</b>
-              ) : (
-                <b>
-                  {format(new Date(editForm.startdate), 'dd MMM yyyy')} To{' '}
-                  {format(new Date(editForm.enddate), 'dd MMM yyyy')}
-                </b>
-              )}
-              <br />
-            </div>
-            <br />
-            <div className="text-center">
-              <button
-                className="btn btn-sm bg-black text-white px-4 py-1"
-                onClick={() => setShowEditConfirmationModal(false)}
-              >
-                VIEW VACATION CALENDAR
-              </button>
-            </div>
-          </Dialog.Panel>
-        </div>
+            <Button onClick={() => setShowConfirmDialog(false)} className="bg-black text-white w-full">
+              VIEW VACATION CALENDAR
+            </Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}
 
-export default LeavesComponent;
+export default LeavesComponent
