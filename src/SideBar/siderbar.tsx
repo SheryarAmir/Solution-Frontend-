@@ -151,7 +151,7 @@ export function CollapsibleSidebar() {
   const [cashManagementOpen, setCashManagementOpen] = React.useState(true)
   const [employeesOpen, setEmployeesOpen] = React.useState(true)
   const navigate = useNavigate()
-  const { state } = useSidebar(); // Get sidebar state (expanded/collapsed)
+  // const { state } = useSidebar(); // Get sidebar state (expanded/collapsed)
 
   const handleNavigation = (url: string) => {
     navigate(url)
