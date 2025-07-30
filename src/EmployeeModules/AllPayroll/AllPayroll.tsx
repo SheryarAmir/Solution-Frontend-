@@ -151,7 +151,7 @@ const AllPayroll: React.FC = () => {
           paginationPageSize={10}
           rowSelection="multiple"
           suppressRowClickSelection={true}
-          frameworkComponents={{
+          components={{
             payrollActionCellRenderer: PayrollActionCellRenderer,
           }}
           context={{

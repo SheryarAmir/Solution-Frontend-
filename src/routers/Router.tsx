@@ -8,6 +8,7 @@ import Layout from "../components/Layout";
 import Debug from "../components/Debug";
 
 
+
 // commom files
 
 
@@ -41,6 +42,7 @@ const AppRoutes = () => {
 
       {/* Protected Routes with Layout */}
       <Route path="/" element={<Layout />}>
+      
         {/* Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
 
