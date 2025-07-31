@@ -21,7 +21,7 @@ import CashUpSummary from "../CashManagmentModules/CashupSummary/cashupsummary";
 
 import ShiftCalendar from "../EmployeeModules/ShiftCalendar/shiftcalendar";
 import Attendance from "../EmployeeModules/Attendance/Attendance";
-import Request from "../EmployeeModules/Request/Request";
+import Request from "../EmployeeModules/Request/request";
 import Leaves from "../EmployeeModules/Leaves/leaves";
 import EmpProfile from "../EmployeeModules/EmpProfile/empprofile";
 import Payroll from "../EmployeeModules/Payroll/payroll"

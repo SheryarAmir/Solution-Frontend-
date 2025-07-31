@@ -7,8 +7,8 @@ import { useNavigate } from "react-router-dom" // Note: react-router-dom is not 
 import Ros from "../../assets/images/ROS_FINAL-07.png";
 import pexels from"../../assets/images/pexels-anete-lusina-5721015.jpg"
 // import SignIn from "./SignIn";
-
-
+import OtpInput from "./_component/OtpInput";
+import ForgotPassword from "./_component/ForgotPassword";
 
 
 // LogoHeader component integrated directly
@@ -474,51 +474,20 @@ export default function Register() {
 
         {/* OTP Screen */}
         {showDiv.otp && (
-          <div className="flex flex-col h-full">
-            <LogoHeader />
-            <div className="flex-grow flex flex-col justify-center items-center">
-              <p className="text-lg font-bold mb-4">Enter OTP</p>
-              <div className="flex space-x-4">
-                <input
-                  className="w-12 h-12 text-center border border-gray-300 rounded-md text-lg focus:ring-primary_blue focus:border-primary_blue outline-none"
-                  type="text"
-                  maxLength={1}
-                />
-                <input
-                  className="w-12 h-12 text-center border border-gray-300 rounded-md text-lg focus:ring-primary_blue focus:border-primary_blue outline-none"
-                  type="text"
-                  maxLength={1}
-                />
-                <input
-                  className="w-12 h-12 text-center border border-gray-300 rounded-md text-lg focus:ring-primary_blue focus:border-primary_blue outline-none"
-                  type="text"
-                  maxLength={1}
-                />
-                <input
-                  className="w-12 h-12 text-center border border-gray-300 rounded-md text-lg focus:ring-primary_blue focus:border-primary_blue outline-none"
-                  type="text"
-                  maxLength={1}
-                />
-              </div>
-            </div>
-            <div className="text-center mt-4">
+          <>
+            <OtpInput
+              onVerify={() => toggleDiv("verify")}
+              onLogin={login}
+            />
+            <div className="text-center mt-2">
               <button
-                className="w-[120px] h-10 bg-primary_blue text-white font-medium text-base rounded-md hover:bg-primary_blue/90"
-                onClick={() => toggleDiv("verify")}
+                className="text-blue-600 underline text-sm"
+                onClick={() => toggleDiv("reset")}
               >
-                VERIFY
+                Forgot Password?
               </button>
             </div>
-            <div className="mt-auto text-center pt-4">
-              <p className="text-sm opacity-50 inline-block">Have an account?</p>
-              <button
-                className="ml-2 w-[100px] h-10 bg-primary_blue text-white font-medium text-base rounded-md hover:bg-primary_blue/90"
-                onClick={login}
-              >
-                LOGIN
-              </button>
-            </div>
-          </div>
+          </>
         )}
 
         {/* Sign-UP successful Screen */}
@@ -548,6 +517,14 @@ export default function Register() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Forgot Password Screen */}
+        {showDiv.reset && (
+          <ForgotPassword
+            onSendOtp={() => toggleDiv("otp")}
+            onLogin={login}
+          />
         )}
       </div>
     </div>

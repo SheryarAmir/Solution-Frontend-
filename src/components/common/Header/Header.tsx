@@ -56,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ authFacade, userInfoService }) => {
 
   const logout = () => {
     authFacade.logout();
-    navigate('/');
+    navigate('/signin', { replace: true });
   };
 
   const isToggled = (): boolean => {
