@@ -79,7 +79,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarItem[] = [
       },
       {
         name: "Shift Calendar",
-        link: "/emp-management/shift-calendar",
+        link: "/emp-management/shiftcalendar",
         icon: "icon-payroll icon",
       },
       {

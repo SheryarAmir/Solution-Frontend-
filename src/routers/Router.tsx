@@ -9,9 +9,6 @@ import Debug from "../components/Debug";
 
 
 
-// commom files
-
-
 // Cash Management Components
 import NewCashUp from "../CashManagmentModules/NewCashUp/newcashup";
 import ViewCashup from "../CashManagmentModules/Viewcashup/viewcashup";
@@ -21,12 +18,25 @@ import AllReport from "../CashManagmentModules/CashManagmentModules/AllReport/al
 import CashUpSummary from "../CashManagmentModules/CashupSummary/cashupsummary";
 
 // Employee Management Components
-import AllEmployees from "../EmployeeModules/AllEmployes/allemployes";
-import ShiftCalendarLanding from "../EmployeeModules/ShiftCalendarLanding/shiftcalendarlanding";
+
+import ShiftCalendar from "../EmployeeModules/ShiftCalendar/shiftcalendar";
 import Attendance from "../EmployeeModules/Attendance/Attendance";
-import Request from "../EmployeeModules/Request/request";
+import Request from "../EmployeeModules/Request/Request";
 import Leaves from "../EmployeeModules/Leaves/leaves";
 import EmpProfile from "../EmployeeModules/EmpProfile/empprofile";
+import Payroll from "../EmployeeModules/Payroll/payroll"
+import Employees from "../EmployeeModules/Employees/employees"
+
+
+
+
+
+
+
+
+
+
+
 
 const AppRoutes = () => {
   return (
@@ -57,13 +67,15 @@ const AppRoutes = () => {
         <Route path="/integration" element={<Dashboard />} />
 
         {/* Employee Management Routes */}
-        <Route path="/emp-management/employees/all-employee" element={<AllEmployees />} />
-        <Route path="/emp-management/shift-calendar/landing" element={<ShiftCalendarLanding />} />
+        <Route path="/emp-management/employees/all-employee" element={<Employees />} />
+        <Route path="/emp-management/shiftcalendar" element={<ShiftCalendar/>} />
         <Route path="/emp-management/attendance" element={<Attendance />} />
         <Route path="/emp-management/approvals" element={<Request />} />
         <Route path="/emp-management/leaves" element={<Leaves />} />
+
         <Route path="/emp-management/user-mapping" element={<Dashboard />} />
-        <Route path="/emp-management/payroll/all-payroll" element={<Dashboard />} />
+        
+        <Route path="/emp-management/payroll/all-payroll" element={<Payroll />} />
         <Route path="/emp-management/profile" element={<EmpProfile />} />
 
         {/* Legacy Routes - Keep for backward compatibility */}

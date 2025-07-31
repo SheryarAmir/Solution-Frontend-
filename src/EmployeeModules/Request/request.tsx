@@ -1,716 +1,657 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AgGridReact } from 'ag-grid-react';
-import type { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
-import { format, parseISO } from 'date-fns';
-import { Dialog, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
+"use client"
 
-interface Request {
-  id: number;
-  empName: string;
-  empImgUrl: string;
-  department: string;
-  Shift_date?: Date;
-  Start_time?: string;
-  End_Time?: string;
-  Shift_status?: string;
-  Start_date?: Date;
-  End_date?: Date;
-  Leave_status?: string;
-  Profile_status?: string;
+import type React from "react"
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table"
+import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs"
+import { Card, CardContent } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
+import { Button } from "../../components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog"
+import { Trash2, Eye, Check, DoorClosedIcon as CloseIcon } from "lucide-react" // Renamed X to CloseIcon to avoid conflict with 'X' in JSX
+
+// --- Types Definitions (Inferred from usage) ---
+type TabType = "EMPLOYEES" | "MY REQUEST"
+type CardType = "SHIFTS" | "LEAVES" | "PROFILE" | "SHIFTS1" | "LEAVES1" | "PROFILE1"
+type ModalType = "shift" | "leave" | "profile" | "delete"
+
+interface RequestData {
+  id: number
+  employeeName: string
+  employeeId: string
+  department: string
+  requestType: "Shift" | "Leave" | "Profile"
+  status: "Pending" | "Approved" | "Rejected"
+  startDate: Date
+  endDate: Date
+  startTime?: Date
+  endTime?: Date
+  details?: string
 }
 
-const RequestComponent: React.FC = () => {
-  const navigate = useNavigate();
-  const gridRef = useRef<AgGridReact>(null);
-  const [date] = useState<Date>(new Date());
-  const [tab, setTab] = useState<string>('EMPLOYEES');
-  const [selectedCard, setSelectedCard] = useState<string>('SHIFTS');
-  const [allRequest, setAllRequest] = useState<Request[]>([]);
-  const [event, setEvent] = useState<Request[]>([]);
-  const [showIcon, setShowIcon] = useState<boolean>(false);
-  const [showApprove, setShowApprove] = useState<boolean>(true);
-  const [showReject, setShowReject] = useState<boolean>(true);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [currentModal, setCurrentModal] = useState<string>('');
+// --- Mock Data ---
+const mockAllRequests: RequestData[] = [
+  {
+    id: 1,
+    employeeName: "Alice Johnson",
+    employeeId: "EMP001",
+    department: "FOH",
+    requestType: "Shift",
+    status: "Pending",
+    startDate: new Date(2024, 7, 10), // August 10, 2024
+    endDate: new Date(2024, 7, 10),
+    startTime: new Date(2024, 7, 10, 9, 0),
+    endTime: new Date(2024, 7, 10, 17, 0),
+    details: "Request to swap morning shift",
+  },
+  {
+    id: 2,
+    employeeName: "Bob Williams",
+    employeeId: "EMP002",
+    department: "BOH",
+    requestType: "Leave",
+    status: "Approved",
+    startDate: new Date(2024, 8, 1), // September 1, 2024
+    endDate: new Date(2024, 8, 5),
+    details: "Vacation request for 5 days",
+  },
+  {
+    id: 3,
+    employeeName: "Charlie Brown",
+    employeeId: "EMP003",
+    department: "Management",
+    requestType: "Profile",
+    status: "Pending",
+    startDate: new Date(2024, 7, 15),
+    endDate: new Date(2024, 7, 15),
+    details: "Update contact information",
+  },
+  {
+    id: 4,
+    employeeName: "Diana Prince",
+    employeeId: "EMP004",
+    department: "FOH",
+    requestType: "Shift",
+    status: "Rejected",
+    startDate: new Date(2024, 7, 12),
+    endDate: new Date(2024, 7, 12),
+    startTime: new Date(2024, 7, 12, 10, 0),
+    endTime: new Date(2024, 7, 12, 18, 0),
+    details: "Request for an extra shift",
+  },
+]
 
-  // Mock data - replace with your API calls
-  useEffect(() => {
-    const mockData: Request[] = [
-      {
-        id: 1,
-        empName: 'John Doe',
-        empImgUrl: 'https://example.com/avatar.jpg',
-        department: 'Management',
-        Shift_date: new Date(),
-        Start_time: '09:00',
-        End_Time: '17:00',
-        Shift_status: 'Pending',
-        Start_date: new Date(),
-        End_date: new Date(),
-        Leave_status: 'Approved',
-        Profile_status: 'Active'
-      },
-      {
-        id: 2,
-        empName: 'Jane Smith',
-        empImgUrl: 'https://example.com/avatar2.jpg',
-        department: 'Engineering',
-        Shift_date: new Date(),
-        Start_time: '10:00',
-        End_Time: '18:00',
-        Shift_status: 'Approved',
-        Start_date: new Date(),
-        End_date: new Date(),
-        Leave_status: 'Pending',
-        Profile_status: 'Active'
-      }
-    ];
-    setAllRequest(mockData);
-    setEvent(mockData.filter(e => e.id === 2));
-  }, []);
+const mockMyRequests: RequestData[] = [
+  {
+    id: 101,
+    employeeName: "My Self",
+    employeeId: "EMP005",
+    department: "FOH",
+    requestType: "Shift",
+    status: "Pending",
+    startDate: new Date(2024, 7, 20),
+    endDate: new Date(2024, 7, 20),
+    startTime: new Date(2024, 7, 20, 11, 0),
+    endTime: new Date(2024, 7, 20, 19, 0),
+    details: "My shift swap request",
+  },
+  {
+    id: 102,
+    employeeName: "My Self",
+    employeeId: "EMP005",
+    department: "FOH",
+    requestType: "Leave",
+    status: "Approved",
+    startDate: new Date(2024, 9, 10),
+    endDate: new Date(2024, 9, 15),
+    details: "My vacation request",
+  },
+]
 
-  const dateFormatter = (date: Date | undefined) => {
-    if (!date) return '';
-    return format(date, 'dd MMMM yyyy');
-  };
+// --- Utility Functions ---
+const dateFormatter = (date: Date) => {
+  return format(date, "dd MMM yyyy")
+}
 
-  const timeFormatter = (time: string | undefined) => {
-    if (!time) return '';
-    return time;
-  };
+const timeFormatter = (date: Date) => {
+  return format(date, "hh:mm a")
+}
 
-  const onGridReady = (params: GridReadyEvent) => {
-    const allColumnIds: string[] = [];
-    
-    params.api.getColumns()?.forEach((column: any) => {
-      if (column) {
-        allColumnIds.push(column.getColId());
-      }
-    });
-    
-    params.api.autoSizeColumns(allColumnIds, false);
-    params.api.sizeColumnsToFit();
-  };
+// --- RequestModal Component ---
+interface RequestModalProps {
+  isOpen: boolean
+  onClose: () => void
+  type: ModalType
+  data?: any // Can be RequestData or { type: string } for delete
+}
 
-  const Shift_columnDefs: ColDef[] = [
-    {
-      field: "empName",
-      headerName: "EMPLOYEE NAME",
-      sortable: true,
-      filter: true,
-      headerCheckboxSelection: true,
-      headerCheckboxSelectionFilteredOnly: true,
-      checkboxSelection: true,
-      cellRenderer: (params: { data: Request }) => `
-        <div class="flex items-center">
-          <img src="${params.data.empImgUrl}" width="25" height="25" class="rounded-full mr-2"/>
-          <span>${params.data.empName}</span>
+const RequestModal: React.FC<RequestModalProps> = ({ isOpen, onClose, type, data }) => {
+  let title = ""
+  let content = null
+
+  switch (type) {
+    case "shift":
+      title = "Shift Request Details"
+      content = (
+        <div>
+          <p>
+            <strong>Employee:</strong> {data?.employeeName} ({data?.employeeId})
+          </p>
+          <p>
+            <strong>Department:</strong> {data?.department}
+          </p>
+          <p>
+            <strong>Date:</strong> {data?.startDate ? dateFormatter(data.startDate) : "N/A"}
+          </p>
+          <p>
+            <strong>Time:</strong> {data?.startTime ? timeFormatter(data.startTime) : "N/A"} -{" "}
+            {data?.endTime ? timeFormatter(data.endTime) : "N/A"}
+          </p>
+          <p>
+            <strong>Status:</strong> {data?.status}
+          </p>
+          <p>
+            <strong>Details:</strong> {data?.details}
+          </p>
         </div>
-      `,
-    },
-    { field: "id", headerName: "EMP ID", sortable: true, filter: true },
-    { field: "department", headerName: "DEPARTMENT", sortable: true, filter: true },
-    {
-      field: "Shift_date",
-      headerName: "SHIFT DATE",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => dateFormatter(params.data.Shift_date),
-    },
-    {
-      field: "Start_time",
-      headerName: "START TIME",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => timeFormatter(params.data.Start_time),
-    },
-    {
-      field: "End_Time",
-      headerName: "END TIME",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => timeFormatter(params.data.End_Time),
-    },
-    {
-      field: "Shift_status",
-      headerName: "STATUS",
-      sortable: true,
-      filter: true,
-    },
-    {
-      headerName: "ACTIONS",
-      cellRenderer: (params: { data: Request }) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => viewRequest(params.data.id, 'shift')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            View
-          </button>
+      )
+      break
+    case "leave":
+      title = "Leave Request Details"
+      content = (
+        <div>
+          <p>
+            <strong>Employee:</strong> {data?.employeeName} ({data?.employeeId})
+          </p>
+          <p>
+            <strong>Department:</strong> {data?.department}
+          </p>
+          <p>
+            <strong>Start Date:</strong> {data?.startDate ? dateFormatter(data.startDate) : "N/A"}
+          </p>
+          <p>
+            <strong>End Date:</strong> {data?.endDate ? dateFormatter(data.endDate) : "N/A"}
+          </p>
+          <p>
+            <strong>Status:</strong> {data?.status}
+          </p>
+          <p>
+            <strong>Details:</strong> {data?.details}
+          </p>
         </div>
-      ),
-    },
-  ];
-
-  const Shift1_columnDefs: ColDef[] = [
-    {
-      headerName: "SR NO.",
-      valueGetter: "node.rowIndex + 1",
-    },
-    {
-      field: "Shift_date",
-      headerName: "SHIFT DATE",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => dateFormatter(params.data.Shift_date),
-    },
-    {
-      field: "Start_time",
-      headerName: "START TIME",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => timeFormatter(params.data.Start_time),
-    },
-    {
-      field: "End_Time",
-      headerName: "END TIME",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => timeFormatter(params.data.End_Time),
-    },
-    {
-      field: "Shift_status",
-      headerName: "STATUS",
-      sortable: true,
-      filter: true,
-    },
-    {
-      headerName: "ACTIONS",
-      cellRenderer: (params: { data: Request }) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => viewRequest(params.data.id, 'myshift')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            View
-          </button>
+      )
+      break
+    case "profile":
+      title = "Profile Update Request Details"
+      content = (
+        <div>
+          <p>
+            <strong>Employee:</strong> {data?.employeeName} ({data?.employeeId})
+          </p>
+          <p>
+            <strong>Department:</strong> {data?.department}
+          </p>
+          <p>
+            <strong>Status:</strong> {data?.status}
+          </p>
+          <p>
+            <strong>Details:</strong> {data?.details || "No specific details provided."}
+          </p>
         </div>
-      ),
-    },
-  ];
-
-  const Leaves_columnDefs: ColDef[] = [
-    {
-      field: "empName",
-      headerName: "EMPLOYEE NAME",
-      sortable: true,
-      filter: true,
-      headerCheckboxSelection: true,
-      headerCheckboxSelectionFilteredOnly: true,
-      checkboxSelection: true,
-      cellRenderer: (params: { data: Request }) => `
-        <div class="flex items-center">
-          <img src="${params.data.empImgUrl}" width="25" height="25" class="rounded-full mr-2"/>
-          <span>${params.data.empName}</span>
-        </div>
-      `,
-    },
-    { field: "id", headerName: "EMP ID", sortable: true, filter: true },
-    { field: "department", headerName: "DEPARTMENT", sortable: true, filter: true },
-    {
-      field: "Start_date",
-      headerName: "START DATE",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => dateFormatter(params.data.Start_date),
-    },
-    {
-      field: "End_date",
-      headerName: "END DATE",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => dateFormatter(params.data.End_date),
-    },
-    {
-      field: "Leave_status",
-      headerName: "STATUS",
-      sortable: true,
-      filter: true,
-    },
-    {
-      headerName: "ACTIONS",
-      cellRenderer: (params: { data: Request }) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => viewRequest(params.data.id, 'leave')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            View
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  const Leaves1_columnDefs: ColDef[] = [
-    {
-      headerName: "SR NO.",
-      valueGetter: "node.rowIndex + 1",
-    },
-    {
-      field: "Start_date",
-      headerName: "START DATE",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => dateFormatter(params.data.Start_date),
-    },
-    {
-      field: "End_date",
-      headerName: "END DATE",
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => dateFormatter(params.data.End_date),
-    },
-    {
-      field: "Leave_status",
-      headerName: "STATUS",
-      sortable: true,
-      filter: true,
-    },
-    {
-      headerName: "ACTIONS",
-      cellRenderer: (params: { data: Request }) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => viewRequest(params.data.id, 'myleave')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            View
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  const Profile_columnDefs: ColDef[] = [
-    {
-      field: "empName",
-      headerName: "EMPLOYEE NAME",
-      sortable: true,
-      filter: true,
-      headerCheckboxSelection: true,
-      headerCheckboxSelectionFilteredOnly: true,
-      checkboxSelection: true,
-      cellRenderer: (params: { data: Request }) => `
-        <div class="flex items-center">
-          <img src="${params.data.empImgUrl}" width="25" height="25" class="rounded-full mr-2"/>
-          <span>${params.data.empName}</span>
-        </div>
-      `,
-    },
-    { field: "id", headerName: "EMP ID", sortable: true, filter: true },
-    { field: "department", headerName: "DEPARTMENT", sortable: true, filter: true },
-    {
-      field: "Profile_status",
-      headerName: "STATUS",
-      sortable: true,
-      filter: true,
-    },
-    {
-      headerName: "ACTIONS",
-      cellRenderer: (params: { data: Request }) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => viewRequest(params.data.id, 'profile')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            View
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  const Profile1_columnDefs: ColDef[] = [
-    {
-      headerName: "SR NO.",
-      valueGetter: "node.rowIndex + 1",
-    },
-    { field: "department", headerName: "DEPARTMENT", sortable: true, filter: true },
-    {
-      field: "Profile_status",
-      headerName: "STATUS",
-      sortable: true,
-      filter: true,
-    },
-    {
-      headerName: "ACTIONS",
-      cellRenderer: (params: { data: Request }) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => viewRequest(params.data.id, 'myprofile')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            View
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  const defaultColDef: ColDef = {
-    flex: 1,
-    minWidth: 100,
-    resizable: true,
-  };
-
-  const viewRequest = (id: number, type: string) => {
-    setCurrentModal(type);
-    setIsModalOpen(true);
-  };
-
-  const setSelectedTab = (tab: string) => {
-    setTab(tab);
-    if (tab === 'MY REQUEST') {
-      setSelectedCard('SHIFTS1');
-    } else {
-      setSelectedCard('SHIFTS');
-    }
-  };
-
-  const ShowApproved = () => {
-    setShowIcon(true);
-    setShowReject(false);
-  };
-
-  const ShowRejected = () => {
-    setShowIcon(true);
-    setShowApprove(false);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setCurrentModal('');
-  };
-
-  const renderModalContent = () => {
-    switch (currentModal) {
-      case 'shift':
-        return (
-          <div className="modal-body">
-            <div className="flex justify-between mt-2">
-              <h6 className="">
-                <span onClick={closeModal} style={{ cursor: 'pointer' }}>
-                  <i className="fa fa-arrow-left arrow"></i> </span>
-                &nbsp; <b> Update Shift Request </b> <br />
-                <small className="ml-4">12 Dec 2020, Saturday</small>
-              </h6>
-              <div hidden={showIcon}>
-                <i
-                  className="fa fa-times fa-2x mr-4"
-                  onClick={ShowApproved}
-                  style={{ cursor: 'pointer', color: 'rgba(255, 0, 0, 0.801)' }}
-                ></i>
-                <i
-                  className="fa fa-check fa-2x mr-4"
-                  onClick={ShowRejected}
-                  style={{ cursor: 'pointer', color: 'green' }}
-                ></i>
-              </div>
-              <div hidden={showApprove} style={{ cursor: 'pointer', color: 'green' }}>
-                APPROVED!
-              </div>
-              <div
-                hidden={showReject}
-                style={{ cursor: 'pointer', color: 'rgba(255, 0, 0, 0.801)' }}
-              >
-                REJECTED!
-              </div>
-            </div>
-            <div className="row d-flex ml-3">
-              <div className="col-12 mb-4">Location : London</div>
-              <div className="col-12 mb-1">Employee Name : John Doe</div>
-              <div className="col-12 mb-4">Department : Management</div>
-              <div className="col-12 mb-4">Title : Head Chef</div>
-              <div className="col-12 mb-4">Shift Type: Regular</div>
-            </div>
-            <div className="row d-flex ml-3 mb-5">
-              <div className="col-6 mb-5">
-                Shift Start Time <br />
-                09:10
-              </div>
-              <div className="col-6 mb-5">
-                Shift End Time <br />
-                19:10
-              </div>
-            </div>
-            <h6 className="ml-4">Edit Shift Time</h6>
-            <div className="row d-flex ml-3 mb-3">
-              <div className="col-6">
-                Shift Start Time <br />
-                10:10
-              </div>
-              <div className="col-6">
-                Shift End Time <br />
-                15:10
-              </div>
-            </div>
-            <br />
-            <div className="row d-flex ml-3">
-              <h6 className="mt-2 ml-2">Approve</h6>
-              <input type="checkbox" className="toggleSmall" />
-            </div>
-            <hr />
-            <div className="row d-flex ml-1">
-              <div className="col-5">
-                <h6>Send Changes</h6>
-              </div>
-              <div className="col-3">
-                <input type="checkbox" className="mr-2" /> Send SMS
-              </div>
-              <div className="col-3">
-                <input type="checkbox" className="mr-2" /> Send Message
-              </div>
-            </div>
-            <div className="row d-flex ml-1">
-              <div className="col-12">
-                <small>
-                  <i className="fa fa-info-circle fa-xs" aria-hidden="true"></i> if
-                  changing shift from one employee to another, both employees will
-                  notify
-                </small>
-              </div>
-            </div>
+      )
+      break
+    case "delete":
+      title = "Confirm Deletion"
+      content = (
+        <div className="text-center">
+          <Trash2 className="h-10 w-10 mx-auto text-gray-500 mb-4" />
+          <p className="text-lg font-medium">Are you sure you want to delete this {data?.type} request?</p>
+          <div className="mt-4 flex justify-center space-x-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button className="bg-red-600 text-white hover:bg-red-700">Delete</Button>
           </div>
-        );
-      // Add cases for other modal types (leave, profile, etc.)
+        </div>
+      )
+      break
+    default:
+      title = "Request Details"
+      content = <p>No details available.</p>
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <Button variant="ghost" size="sm" onClick={onClose} className="absolute right-4 top-4 p-0">
+            <CloseIcon className="h-4 w-4" />
+          </Button>
+        </DialogHeader>
+        <div className="py-4">{content}</div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// --- DataTable Component (Minimal Implementation) ---
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[]
+  data: TData[]
+}
+
+function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
+  return (
+    <div className="rounded-md border">
+      <table className="w-full">
+        <thead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id} className="border-b">
+              {headerGroup.headers.map((header) => {
+                return (
+                  <th key={header.id} className="h-12 px-4 text-left align-middle font-medium text-gray-500">
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
+                )
+              })}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <tr key={row.id} data-state={row.getIsSelected() && "selected"} className="border-b transition-colors">
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="p-4 align-middle">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={columns.length} className="h-24 text-center text-gray-500">
+                No results.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// --- Main Request Component ---
+export const RequestComponent: React.FC = () => {
+  const [tab, setTab] = useState<TabType>("EMPLOYEES")
+  const [selectedCard, setSelectedCard] = useState<CardType>("SHIFTS")
+  const [allRequest, setAllRequest] = useState<RequestData[]>([])
+  const [myRequests, setMyRequests] = useState<RequestData[]>([]) // Renamed 'event' to 'myRequests' for clarity
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalType, setModalType] = useState<ModalType>("shift")
+  const [modalData, setModalData] = useState<any>(null) // Data to pass to the modal
+
+  // Mock data fetch
+  useEffect(() => {
+    setAllRequest(mockAllRequests)
+    setMyRequests(mockMyRequests)
+  }, [])
+
+  const handleView = (request: RequestData) => {
+    let type: ModalType
+    switch (request.requestType) {
+      case "Shift":
+        type = "shift"
+        break
+      case "Leave":
+        type = "leave"
+        break
+      case "Profile":
+        type = "profile"
+        break
       default:
-        return null;
+        type = "shift" // Default case
     }
-  };
+    setModalType(type)
+    setModalData(request)
+    setModalOpen(true)
+  }
+
+  const handleDelete = (request: RequestData) => {
+    setModalType("delete")
+    setModalData({ type: request.requestType.toLowerCase(), id: request.id }) // Pass type and ID for deletion
+    setModalOpen(true)
+  }
+
+  const getStatusColor = (status: RequestData["status"]) => {
+    switch (status) {
+      case "Approved":
+        return "bg-green-100 text-green-800"
+      case "Rejected":
+        return "bg-red-100 text-red-800"
+      case "Pending":
+        return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const ShiftColumns: ColumnDef<RequestData>[] = [
+    {
+      accessorKey: "employeeName",
+      header: "EMPLOYEE NAME",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          {row.original.employeeName} ({row.original.employeeId})
+        </div>
+      ),
+    },
+    {
+      accessorKey: "department",
+      header: "DEPARTMENT",
+    },
+    {
+      accessorKey: "requestType",
+      header: "REQUEST TYPE",
+    },
+    {
+      accessorKey: "status",
+      header: "STATUS",
+      cell: ({ row }) => <Badge className={getStatusColor(row.original.status)}>{row.original.status}</Badge>,
+    },
+    {
+      accessorKey: "startDate",
+      header: "DATE",
+      cell: ({ row }) => {
+        const start = row.original.startDate
+        const end = row.original.endDate
+        if (start && end && format(start, "yyyy-MM-dd") !== format(end, "yyyy-MM-dd")) {
+          return `${dateFormatter(start)} - ${dateFormatter(end)}`
+        }
+        return start ? dateFormatter(start) : "N/A"
+      },
+    },
+    {
+      accessorKey: "time",
+      header: "TIME",
+      cell: ({ row }) => {
+        const start = row.original.startTime
+        const end = row.original.endTime
+        if (start && end) {
+          return `${timeFormatter(start)} - ${timeFormatter(end)}`
+        }
+        return "N/A"
+      },
+    },
+    {
+      id: "actions",
+      header: "ACTIONS",
+      cell: ({ row }) => (
+        <div className="flex space-x-2">
+          <Button variant="ghost" size="sm" onClick={() => handleView(row.original)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(row.original)}>
+            <Trash2 className="h-4 w-4 text-red-600" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const LeavesColumns: ColumnDef<RequestData>[] = [
+    {
+      accessorKey: "employeeName",
+      header: "EMPLOYEE NAME",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          {row.original.employeeName} ({row.original.employeeId})
+        </div>
+      ),
+    },
+    {
+      accessorKey: "department",
+      header: "DEPARTMENT",
+    },
+    {
+      accessorKey: "status",
+      header: "STATUS",
+      cell: ({ row }) => <Badge className={getStatusColor(row.original.status)}>{row.original.status}</Badge>,
+    },
+    {
+      accessorKey: "startDate",
+      header: "START DATE",
+      cell: ({ row }) => (row.original.startDate ? dateFormatter(row.original.startDate) : "N/A"),
+    },
+    {
+      accessorKey: "endDate",
+      header: "END DATE",
+      cell: ({ row }) => (row.original.endDate ? dateFormatter(row.original.endDate) : "N/A"),
+    },
+    {
+      accessorKey: "details",
+      header: "DETAILS",
+    },
+    {
+      id: "actions",
+      header: "ACTIONS",
+      cell: ({ row }) => (
+        <div className="flex space-x-2">
+          <Button variant="ghost" size="sm" onClick={() => handleView(row.original)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(row.original)}>
+            <Trash2 className="h-4 w-4 text-red-600" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const ProfileColumns: ColumnDef<RequestData>[] = [
+    {
+      accessorKey: "employeeName",
+      header: "EMPLOYEE NAME",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          {row.original.employeeName} ({row.original.employeeId})
+        </div>
+      ),
+    },
+    {
+      accessorKey: "department",
+      header: "DEPARTMENT",
+    },
+    {
+      accessorKey: "status",
+      header: "STATUS",
+      cell: ({ row }) => <Badge className={getStatusColor(row.original.status)}>{row.original.status}</Badge>,
+    },
+    {
+      accessorKey: "details",
+      header: "DETAILS",
+    },
+    {
+      id: "actions",
+      header: "ACTIONS",
+      cell: ({ row }) => (
+        <div className="flex space-x-2">
+          <Button variant="ghost" size="sm" onClick={() => handleView(row.original)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(row.original)}>
+            <Trash2 className="h-4 w-4 text-red-600" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const getTableData = () => {
+    const data = tab === "EMPLOYEES" ? allRequest : myRequests
+    const type = tab === "EMPLOYEES" ? selectedCard : selectedCard.replace("1", "") // Remove '1' for 'My Request' cards
+
+    switch (type) {
+      case "SHIFTS":
+        return data.filter((req) => req.requestType === "Shift")
+      case "LEAVES":
+        return data.filter((req) => req.requestType === "Leave")
+      case "PROFILE":
+        return data.filter((req) => req.requestType === "Profile")
+      default:
+        return []
+    }
+  }
+
+  const getTableColumns = () => {
+    const type = tab === "EMPLOYEES" ? selectedCard : selectedCard.replace("1", "")
+    switch (type) {
+      case "SHIFTS":
+        return ShiftColumns
+      case "LEAVES":
+        return LeavesColumns
+      case "PROFILE":
+        return ProfileColumns
+      default:
+        return []
+    }
+  }
+
+  const currentTableData = getTableData()
+  const currentTableColumns = getTableColumns()
 
   return (
     <div className="container mx-auto p-4">
-      <div className="row">
-        {/* Request heading and tab */}
-        <div className="col-12 col-md-6 mb-2">
-          <h4>Requests</h4>
-
-          <div className="flex border rounded-lg overflow-hidden w-max">
-            <button
-              className={`px-4 py-2 ${tab === 'EMPLOYEES' ? 'bg-black text-white' : 'bg-white'}`}
-              onClick={() => setSelectedTab('EMPLOYEES')}
-            >
-              EMPLOYEES
-            </button>
-            <button
-              className={`px-4 py-2 ${tab === 'MY REQUEST' ? 'bg-black text-white' : 'bg-white'}`}
-              onClick={() => setSelectedTab('MY REQUEST')}
-            >
-              MY REQUEST
-            </button>
-          </div>
+      <div className="flex flex-col md:flex-row justify-between mb-4">
+        <div className="mb-4 md:mb-0">
+          <h4 className="text-xl font-bold">Requests</h4>
+          <Tabs
+            value={tab}
+            onValueChange={(value) => {
+              setTab(value as TabType)
+              // Reset selected card based on the new tab
+              setSelectedCard(value === "MY REQUEST" ? "SHIFTS1" : "SHIFTS")
+            }}
+            className="mt-2"
+          >
+            <TabsList>
+              <TabsTrigger value="EMPLOYEES">EMPLOYEES</TabsTrigger>
+              <TabsTrigger value="MY REQUEST">MY REQUEST</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-
-        {/* shifts, leaves and profile cards */}
-        <div className="col-12 col-md-6 mb-1 flex justify-between">
-          {tab === 'EMPLOYEES' ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          {tab === "EMPLOYEES" ? (
             <>
-              <div
-                className={`box p-4 m-2 cursor-pointer ${selectedCard === 'SHIFTS' ? 'bg-gray-100 shadow-inner' : 'bg-white shadow-md'}`}
-                onClick={() => setSelectedCard('SHIFTS')}
+              <Card
+                className={`w-36 h-20 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${
+                  selectedCard === "SHIFTS" ? "bg-gray-100" : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedCard("SHIFTS")}
               >
-                SHIFTS
-                <span className="absolute top-0 right-0 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transform translate-x-1/2 -translate-y-1/2">
-                  {allRequest.length}
-                </span>
-              </div>
-              <div
-                className={`box p-4 m-2 cursor-pointer ${selectedCard === 'LEAVES' ? 'bg-gray-100 shadow-inner' : 'bg-white shadow-md'}`}
-                onClick={() => setSelectedCard('LEAVES')}
+                <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+                  <span className="font-medium">SHIFTS</span>
+                  <Badge className="absolute -top-2 -right-2 bg-black text-white">
+                    {allRequest.filter((r) => r.requestType === "Shift").length}
+                  </Badge>
+                </CardContent>
+              </Card>
+              <Card
+                className={`w-36 h-20 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${
+                  selectedCard === "LEAVES" ? "bg-gray-100" : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedCard("LEAVES")}
               >
-                LEAVES
-                <span className="absolute top-0 right-0 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transform translate-x-1/2 -translate-y-1/2">
-                  {allRequest.length}
-                </span>
-              </div>
-              <div
-                className={`box p-4 m-2 cursor-pointer ${selectedCard === 'PROFILE' ? 'bg-gray-100 shadow-inner' : 'bg-white shadow-md'}`}
-                onClick={() => setSelectedCard('PROFILE')}
+                <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+                  <span className="font-medium">LEAVES</span>
+                  <Badge className="absolute -top-2 -right-2 bg-black text-white">
+                    {allRequest.filter((r) => r.requestType === "Leave").length}
+                  </Badge>
+                </CardContent>
+              </Card>
+              <Card
+                className={`w-36 h-20 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${
+                  selectedCard === "PROFILE" ? "bg-gray-100" : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedCard("PROFILE")}
               >
-                PROFILE
-                <span className="absolute top-0 right-0 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transform translate-x-1/2 -translate-y-1/2">
-                  {allRequest.length}
-                </span>
-              </div>
+                <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+                  <span className="font-medium">PROFILE</span>
+                  <Badge className="absolute -top-2 -right-2 bg-black text-white">
+                    {allRequest.filter((r) => r.requestType === "Profile").length}
+                  </Badge>
+                </CardContent>
+              </Card>
             </>
           ) : (
             <>
-              <div
-                className={`box p-4 m-2 cursor-pointer ${selectedCard === 'SHIFTS1' ? 'bg-gray-100 shadow-inner' : 'bg-white shadow-md'}`}
-                onClick={() => setSelectedCard('SHIFTS1')}
+              <Card
+                className={`w-36 h-20 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${
+                  selectedCard === "SHIFTS1" ? "bg-gray-100" : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedCard("SHIFTS1")}
               >
-                SHIFTS
-                <span className="absolute top-0 right-0 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transform translate-x-1/2 -translate-y-1/2">
-                  {event.length}
-                </span>
-              </div>
-              <div
-                className={`box p-4 m-2 cursor-pointer ${selectedCard === 'LEAVES1' ? 'bg-gray-100 shadow-inner' : 'bg-white shadow-md'}`}
-                onClick={() => setSelectedCard('LEAVES1')}
+                <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+                  <span className="font-medium">SHIFTS</span>
+                  <Badge className="absolute -top-2 -right-2 bg-black text-white">
+                    {myRequests.filter((r) => r.requestType === "Shift").length}
+                  </Badge>
+                </CardContent>
+              </Card>
+              <Card
+                className={`w-36 h-20 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${
+                  selectedCard === "LEAVES1" ? "bg-gray-100" : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedCard("LEAVES1")}
               >
-                LEAVES
-                <span className="absolute top-0 right-0 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transform translate-x-1/2 -translate-y-1/2">
-                  {event.length}
-                </span>
-              </div>
-              <div
-                className={`box p-4 m-2 cursor-pointer ${selectedCard === 'PROFILE1' ? 'bg-gray-100 shadow-inner' : 'bg-white shadow-md'}`}
-                onClick={() => setSelectedCard('PROFILE1')}
+                <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+                  <span className="font-medium">LEAVES</span>
+                  <Badge className="absolute -top-2 -right-2 bg-black text-white">
+                    {myRequests.filter((r) => r.requestType === "Leave").length}
+                  </Badge>
+                </CardContent>
+              </Card>
+              <Card
+                className={`w-36 h-20 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${
+                  selectedCard === "PROFILE1" ? "bg-gray-100" : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedCard("PROFILE1")}
               >
-                PROFILE
-                <span className="absolute top-0 right-0 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transform translate-x-1/2 -translate-y-1/2">
-                  {event.length}
-                </span>
-              </div>
+                <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+                  <span className="font-medium">PROFILE</span>
+                  <Badge className="absolute -top-2 -right-2 bg-black text-white">
+                    {myRequests.filter((r) => r.requestType === "Profile").length}
+                  </Badge>
+                </CardContent>
+              </Card>
             </>
           )}
         </div>
       </div>
-
-      {tab === 'EMPLOYEES' && (
-        <div className="row mb-2 justify-end">
-          <button className="btn btn-sm btn-outline-danger px-3 mr-3 text-red-600 border-red-600">
-            <i className="fa fa-times mr-2"></i> REJECT
-          </button>
-
-          <button className="btn btn-sm btn-outline-success px-2 mr-3 text-green-600 border-green-600">
-            <i className="fa fa-check mr-1"></i> APPROVE
-          </button>
+      {tab === "EMPLOYEES" && (
+        <div className="flex justify-end mb-4 space-x-2">
+          <Button variant="outline" className="text-red-600 border-red-600 hover:bg-red-50 bg-transparent">
+            <CloseIcon className="h-4 w-4 mr-2" /> REJECT
+          </Button>
+          <Button variant="outline" className="text-green-600 border-green-600 hover:bg-green-50 bg-transparent">
+            <Check className="h-4 w-4 mr-2" /> APPROVE
+          </Button>
         </div>
       )}
-
-      <div className="row">
-        {selectedCard === 'SHIFTS' && (
-          <div className="ag-theme-alpine w-full" style={{ height: 500 }}>
-            <AgGridReact
-              ref={gridRef}
-              rowData={allRequest}
-              columnDefs={Shift_columnDefs}
-              defaultColDef={defaultColDef}
-              rowSelection="multiple"
-              onGridReady={onGridReady}
-              suppressCellFocus={true}
-            />
-          </div>
-        )}
-        {selectedCard === 'LEAVES' && (
-          <div className="ag-theme-alpine w-full" style={{ height: 500 }}>
-            <AgGridReact
-              ref={gridRef}
-              rowData={allRequest}
-              columnDefs={Leaves_columnDefs}
-              defaultColDef={defaultColDef}
-              rowSelection="multiple"
-              onGridReady={onGridReady}
-              suppressCellFocus={true}
-            />
-          </div>
-        )}
-        {selectedCard === 'PROFILE' && (
-          <div className="ag-theme-alpine w-full" style={{ height: 500 }}>
-            <AgGridReact
-              ref={gridRef}
-              rowData={allRequest}
-              columnDefs={Profile_columnDefs}
-              defaultColDef={defaultColDef}
-              rowSelection="multiple"
-              onGridReady={onGridReady}
-              suppressCellFocus={true}
-            />
-          </div>
-        )}
-        {selectedCard === 'SHIFTS1' && (
-          <div className="ag-theme-alpine w-full" style={{ height: 500 }}>
-            <AgGridReact
-              ref={gridRef}
-              rowData={event}
-              columnDefs={Shift1_columnDefs}
-              defaultColDef={defaultColDef}
-              rowSelection="multiple"
-              onGridReady={onGridReady}
-              suppressCellFocus={true}
-            />
-          </div>
-        )}
-        {selectedCard === 'LEAVES1' && (
-          <div className="ag-theme-alpine w-full" style={{ height: 500 }}>
-            <AgGridReact
-              ref={gridRef}
-              rowData={event}
-              columnDefs={Leaves1_columnDefs}
-              defaultColDef={defaultColDef}
-              rowSelection="multiple"
-              onGridReady={onGridReady}
-              suppressCellFocus={true}
-            />
-          </div>
-        )}
-        {selectedCard === 'PROFILE1' && (
-          <div className="ag-theme-alpine w-full" style={{ height: 500 }}>
-            <AgGridReact
-              ref={gridRef}
-              rowData={event}
-              columnDefs={Profile1_columnDefs}
-              defaultColDef={defaultColDef}
-              rowSelection="multiple"
-              onGridReady={onGridReady}
-              suppressCellFocus={true}
-            />
-          </div>
-        )}
+      <div className="bg-white rounded-lg shadow">
+        <DataTable columns={currentTableColumns} data={currentTableData} />
       </div>
-
-      {/* Modal */}
-      <Transition appear show={isModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={closeModal}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  {renderModalContent()}
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      <RequestModal isOpen={modalOpen} onClose={() => setModalOpen(false)} type={modalType} data={modalData} />
     </div>
-  );
-};
+  )
+}
 
-export default RequestComponent;
+export default RequestComponent
