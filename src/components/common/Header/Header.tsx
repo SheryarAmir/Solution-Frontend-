@@ -65,11 +65,9 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     console.log('User clicked');
   };
 
-  const handleLogout = () => {
-    // In a real app, you would call your auth service here
-    // authFacade.logout();
-    localStorage.removeItem('AzureName');
-    navigate('/signin');
+  const logout = () => {
+    authFacade.logout();
+    navigate('/signin', { replace: true });
   };
 
   const getProfileImage = () => {
