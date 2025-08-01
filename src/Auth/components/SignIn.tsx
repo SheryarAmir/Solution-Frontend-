@@ -4,6 +4,7 @@ import rosLogo7 from '../../assets/images/ROS_FINAL-07.png';
 import rosLogo5 from '../../assets/images/ROS_FINAL-05.png';
 import bgImage from '../../assets/images/7.jpg';
 import LogoHeader from './_component/LogoHeader';
+import ForgotPassword from './_component/ForgotPassword';
 
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
@@ -126,54 +127,10 @@ const SignIn: React.FC = () => {
           )}
           {/* Forgot Password Card */}
           {showDiv.forgot && (
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <div className="text-center mb-4">
-                <p className="text-2xl font-normal">
-                  <span className="text-2xl font-bold">Welcome to </span>
-                  <img src={rosLogo7} alt="Logo" className="inline-block align-middle w-20 h-12 ml-[-14px] mt-[-5px]" />
-                </p>
-              </div>
-              <div className="text-center mb-6">
-                <img src={rosLogo5} alt="Logo" className="w-full ml-[-14px] mt-[-18px]" />
-              </div>
-              <div className="mb-6">
-                <input
-                  type="email"
-                  className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="text-center mb-2">
-                <button
-                  className="btn btn-sm btn-dark w-36 bg-black text-white py-2 rounded hover:bg-gray-800 transition"
-                  onClick={() => setShowDiv({ ...showDiv, forgot: false, password: true, login: false })}
-                >
-                  RESET PASSWORD
-                </button>
-              </div>
-              <div className="text-center mb-2">
-                <button
-                  className="btn btn-sm btn-dark w-36 bg-black text-white py-2 rounded hover:bg-gray-800 transition"
-                  onClick={dashboard}
-                >
-                  LOGIN
-                </button>
-              </div>
-              <div className="mt-6">
-                <p className="text-start text-sm">
-                  Don't have an account?
-                  <button
-                    className="ml-2 btn btn-sm btn-dark w-20 bg-black text-white py-1 rounded hover:bg-gray-800 transition"
-                    onClick={register}
-                  >
-                    SIGN UP
-                  </button>
-                </p>
-              </div>
-            </div>
+            <ForgotPassword
+              onSendOtp={() => setShowDiv({ ...showDiv, forgot: false, password: true, login: false })}
+              onLogin={() => setShowDiv({ ...showDiv, forgot: false, login: true })}
+            />
           )}
           {/* Password Request Card */}
           {showDiv.password && (

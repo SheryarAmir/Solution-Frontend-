@@ -5,13 +5,12 @@ import { useState } from "react"
 import { ChevronLeft } from "lucide-react"
 import RosLogo from '../../../assets/images/ROS_FINAL-07.png';
 
-interface EmailVerificationProps {
-  onCancel: () => void
-  onContinue: () => void
-  onVerificationComplete?: (email: string, code: string) => void
+interface ForgotPasswordProps {
+  onSendOtp: () => void
+  onLogin: () => void
 }
 
-const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onContinue, onVerificationComplete }) => {
+const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onSendOtp, onLogin }) => {
   const [step, setStep] = useState<"email" | "verification">("email")
   const [email, setEmail] = useState("")
   const [verificationCode, setVerificationCode] = useState("")
@@ -40,7 +39,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onConti
     try {
       // TODO: Replace with your actual API call
       await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate API call
-      onVerificationComplete?.(email, verificationCode)
+      onSendOtp() // Call the onSendOtp prop when verification is complete
     } catch (error) {
       console.error("Error verifying code:", error)
     } finally {
@@ -52,7 +51,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onConti
     setIsLoading(true)
     try {
       // TODO: Replace with your actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate API call
       setVerificationCode("") // Clear the current code
     } catch (error) {
       console.error("Error sending new code:", error)
@@ -65,7 +64,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onConti
     setStep("email")
     setEmail("")
     setVerificationCode("")
-    onCancel()
+    onLogin() // Call the onLogin prop when canceling
   }
 
   return (
@@ -111,7 +110,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onConti
 
           {/* Continue Button */}
           <button
-            onClick={onContinue}
+            onClick={onSendOtp}
             className="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium py-3 px-4 rounded-md transition-colors"
           >
             Continue
@@ -168,7 +167,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onConti
 
           {/* Continue Button */}
           <button
-            onClick={onContinue}
+            onClick={onSendOtp}
             className="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium py-3 px-4 rounded-md transition-colors"
           >
             Continue
@@ -179,4 +178,4 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({ onCancel, onConti
   )
 }
 
-export default EmailVerification
+export default ForgotPassword
