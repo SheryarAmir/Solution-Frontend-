@@ -1,280 +1,373 @@
-"use client"
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { isSameDay, subDays, format } from 'date-fns';
 
-import { useState } from "react"
-import { Calendar, Download, Plus, Trash2 } from "lucide-react"
-import { Button } from "../../../components/ui/button"
-import { Card, CardContent } from "../../../components/ui/card"
-import { Checkbox } from "../../../components/ui/checkbox"
-import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
-import { Calendar as CalendarComponent } from "../../../components/ui/calendar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "../../../components/ui/pagination"
+// Type definitions
+type CashUp = {
+  cashUpStatus: 'DRAFT' | 'IMPORT DRAFT' | 'PUBLISHED';
+  cashUpDate: Date;
+  cashtotal: number;
+  // Add other properties as needed
+  cashnPdq?: {
+    tillSystems: {
+      amount: number;
+    }[];
+  };
+};
 
-// Sample data - you can replace this with real data
-const sampleData = Array.from({ length: 25 }, (_, i) => ({
-  id: i + 1,
-  date: `2025-01-${String(i + 1).padStart(2, "0")}`,
-  time: `${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
-  epos: Math.floor(Math.random() * 1000),
-  cash: Math.floor(Math.random() * 500),
-  pdq: Math.floor(Math.random() * 800),
-  delivery: Math.floor(Math.random() * 200),
-  difference: Math.floor(Math.random() * 100) - 50,
-  kpiTotal: Math.floor(Math.random() * 1500),
-  status: Math.random() > 0.5 ? "Complete" : "Pending",
-}))
+type CashupFacadeService = {
+  cashupList$: {
+    subscribe: (callback: (data: CashUp[]) => void) => { unsubscribe: () => void };
+  };
+  load: () => void;
+  filterByDateRange: (range: { start_date: Date; end_date: Date }) => void;
+  getCashupTotals: (cashup: CashUp) => { cash: number };
+};
 
-export default function CashUpSheets() {
-  const [selectedItems, setSelectedItems] = useState<number[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [calendarOpen, setCalendarOpen] = useState(false)
-  const itemsPerPage = 10
+type DateRange = {
+  start_date: Date;
+  end_date: Date;
+};
 
-  // Calculate pagination
-  const totalPages = Math.ceil(sampleData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentItems = sampleData.slice(startIndex, endIndex)
+type SummaryData = {
+  yesterdayTotal: number;
+  todayTotal: number;
+  yesterdayPercent: number;
+  todayPercent: number;
+  showAddNew: boolean;
+};
 
-  // Get current and next month dates
-  const currentDate = new Date()
-  const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+// Mock facade service - replace with actual implementation
+const createCashupFacadeService = (): CashupFacadeService => ({
+  cashupList$: {
+    subscribe: (callback) => {
+      // Mock data - replace with actual observable
+      const mockData: CashUp[] = [];
+      callback(mockData);
+      return { unsubscribe: () => {} };
+    },
+  },
+  load: () => {},
+  filterByDateRange: () => {},
+  getCashupTotals: (cashup) => ({ cash: cashup.cashtotal || 0 }),
+});
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedItems(currentItems.map((item) => item.id))
-    } else {
-      setSelectedItems([])
+const CashUpComponent: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [cashupFacade] = useState<CashupFacadeService>(createCashupFacadeService());
+  const [selectedCard, setSelectedCard] = useState<string>(
+    (location.state as { viewState?: string })?.viewState || 'ALL'
+  );
+  const [allDeposit, setAllDeposit] = useState<CashUp[]>([]);
+  const [allBanking] = useState<any[]>([]);
+  const [allCashup, setAllCashup] = useState<CashUp[]>([]);
+  const [filterCashup, setFilterCashup] = useState<CashUp[]>([]);
+  const [totalDrafts, setTotalDrafts] = useState<number>(0);
+  const [range, setRange] = useState<DateRange>({
+    start_date: new Date(),
+    end_date: new Date(),
+  });
+  const [depositsFilter, setDepositsFilter] = useState<string>('M');
+  const [percentage] = useState<number>(-200);
+
+  useEffect(() => {
+    document.title = 'ROS - Cashup';
+    
+    const subscription = cashupFacade.cashupList$.subscribe((cashupData: CashUp[]) => {
+      const sortedData = [...cashupData].sort(
+        (a, b) => new Date(b.cashUpDate).getTime() - new Date(a.cashUpDate).getTime()
+      );
+      setAllCashup(sortedData);
+      setFilterCashup(cashupDataFilter(sortedData));
+      console.log('Cashup List is updated', sortedData);
+      setTotalDrafts(getTotalDrafts(sortedData));
+      
+      const deposits = cashupData.filter(
+        (x) => x.cashUpStatus === 'PUBLISHED' && !(x.cashtotal === 0)
+      );
+      setAllDeposit(deposits);
+      console.log('Deposit List is updated', deposits);
+    });
+
+    refreshBankingData();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [cashupFacade]);
+
+  const cashupDataFilter = (data: CashUp[] = allCashup): CashUp[] => {
+    if (selectedCard === 'DRAFTS') {
+      return data.filter(
+        (x) => x.cashUpStatus === 'DRAFT' || x.cashUpStatus === 'IMPORT DRAFT'
+      );
     }
-  }
+    return data.filter(
+      (x) =>
+        x.cashUpStatus === 'DRAFT' ||
+        x.cashUpStatus === 'IMPORT DRAFT' ||
+        x.cashUpStatus === 'PUBLISHED'
+    );
+  };
 
-  const handleSelectItem = (id: number, checked: boolean) => {
-    if (checked) {
-      setSelectedItems([...selectedItems, id])
-    } else {
-      setSelectedItems(selectedItems.filter((item) => item !== id))
-    }
-  }
+  const handleSetSelectedCard = (s: string): void => {
+    const newSelectedCard = selectedCard === s ? 'ALL' : s;
+    setSelectedCard(newSelectedCard);
+    console.log('Filtering', cashupDataFilter());
+    setFilterCashup([...cashupDataFilter()]);
+  };
 
-  const summaryCards = [
-    { title: "ALL CASHUP", amount: "€ 0.00", count: 0 },
-    { title: "DRAFTS", amount: "€ 0.00", count: 0 },
-    { title: "PENDING DEPOSITS", amount: "€ 0.00", count: 0 },
-    { title: "BANKED", amount: "€ 0.00", count: 0 },
-  ]
+  const resetDeposits = (s: string): void => {
+    setDepositsFilter(s);
+  };
+
+  const addNew = (): void => {
+    navigate('/accounting/cashup/new');
+  };
+
+  const filterbyDraft = (): void => {
+    setFilterCashup(allCashup.filter((x) => x.cashUpStatus === 'DRAFT'));
+  };
+
+  const refreshBankingData = (): void => {
+    cashupFacade.load();
+  };
+
+  const handleFilterByDateRange = (range: DateRange): void => {
+    setRange({ ...range });
+    cashupFacade.filterByDateRange(range);
+  };
+
+  const getTotalDrafts = (data: CashUp[] = allCashup): number => {
+    return data.reduce((sum, x) => sum + x.cashtotal, 0);
+  };
+
+  const getTotalPendingdeposit = (): number => {
+    return allDeposit.reduce(
+      (sum, x) => sum + cashupFacade.getCashupTotals(x).cash,
+      0
+    );
+  };
+
+  const getTotalBanking = (): number => {
+    return allBanking.reduce((sum: number, x: any) => sum + x.bankedTotal, 0);
+  };
+
+  const getTotalSummary = (): SummaryData => {
+    const result: SummaryData = {
+      yesterdayTotal: 0,
+      todayTotal: 0,
+      yesterdayPercent: 0,
+      todayPercent: 0,
+      showAddNew: true,
+    };
+
+    const todaySheets = allCashup.filter((x) =>
+      isSameDay(new Date(x.cashUpDate), new Date())
+    );
+    const yesterdayDate = subDays(new Date(), 1);
+    const yesterdaySheets = allCashup.filter((x) =>
+      isSameDay(new Date(x.cashUpDate), yesterdayDate)
+    );
+
+    result.todayTotal = todaySheets.reduce(
+      (sum, x) => sum + cashupFacade.getCashupTotals(x).cash,
+      0
+    );
+
+    result.yesterdayTotal = yesterdaySheets.reduce(
+      (sum, x) => sum + cashupFacade.getCashupTotals(x).cash,
+      0
+    );
+
+    const dbYesterdayDate = subDays(new Date(), 2);
+    const dbYesterdaySheets = allCashup.filter((x) =>
+      isSameDay(new Date(x.cashUpDate), dbYesterdayDate)
+    );
+
+    const dbYesterdayTotal = dbYesterdaySheets.reduce(
+      (sum, x) => sum + cashupFacade.getCashupTotals(x).cash,
+      0
+    );
+
+    result.todayPercent =
+      ((result.todayTotal - result.yesterdayTotal) / (result.todayTotal || 1)) * 100 || 0;
+    result.yesterdayPercent =
+      result.yesterdayTotal === 0
+        ? -100
+        : ((result.yesterdayTotal - dbYesterdayTotal) / (result.yesterdayTotal || 1)) * 100 || 0;
+
+    result.showAddNew = todaySheets.length !== 2;
+
+    return result;
+  };
+
+  const summary = getTotalSummary();
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Cash Up Sheets</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">W M Y</span>
-          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="p-2 bg-transparent">
-                <Calendar className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <div className="flex">
-                <div className="p-3 border-r">
-                  <div className="text-sm font-medium mb-2 text-center">Current Month</div>
-                  <CalendarComponent mode="single" selected={currentDate} month={currentDate} className="rounded-md" />
-                </div>
-                <div className="p-3">
-                  <div className="text-sm font-medium mb-2 text-center">Next Month</div>
-                  <CalendarComponent mode="single" month={nextMonth} className="rounded-md" />
-                </div>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4 text-gray-900">Cash Up</h1>
+      
+      {/* Filter Cards */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        {['DRAFTS', 'ALL', 'DEPOSITS', 'BANKED'].map((card) => (
+          <div
+            key={card}
+            className={`w-[140px] h-[138px] rounded-xl shadow-md cursor-pointer flex flex-col p-4 ${
+              selectedCard === card 
+                ? 'bg-gray-100 bg-opacity-10 border-2 border-blue-500' 
+                : 'bg-white'
+            }`}
+            onClick={() => handleSetSelectedCard(card)}
+          >
+            <h3 className="text-lg font-semibold text-gray-900">{card}</h3>
+            <p className="text-2xl font-bold my-2">
+              {card === 'DRAFTS' 
+                ? totalDrafts 
+                : card === 'DEPOSITS' 
+                  ? getTotalPendingdeposit() 
+                  : 'N/A'}
+            </p>
+            <div className="mt-auto">
+              <div className="w-full bg-gray-200 rounded-full h-3.5">
+                <div
+                  className="bg-gray-800 h-3.5 rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+                />
               </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {summaryCards.map((card, index) => (
-          <Card key={index} className="relative">
-            <CardContent className="p-4">
-              <div className="absolute -top-2 -right-2 bg-gray-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                {card.count}
-              </div>
-              <div className="text-sm font-medium text-gray-600 mb-1">{card.title}</div>
-              <div className="text-lg font-semibold">{card.amount}</div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end items-center gap-2 mb-4">
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4" />
-        </Button>
-        <Button variant="secondary" size="sm">
-          GENERATE JOURNALS
-        </Button>
-        <Button variant="destructive" size="sm">
-          <Trash2 className="h-4 w-4 mr-1" />
-          DELETE
-        </Button>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          ADD New
-        </Button>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4" />
-        </Button>
-        <div className="flex flex-col items-end text-xs text-blue-600">
-          <button className="hover:underline">Download Template</button>
-          <button className="hover:underline">more</button>
+      <div className="flex gap-4 mb-6">
+        {summary.showAddNew && (
+          <button
+            onClick={addNew}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
+          >
+            Add New Cashup
+          </button>
+        )}
+        <button
+          onClick={() => resetDeposits('D')}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded transition-colors"
+        >
+          Daily Deposits
+        </button>
+        <button
+          onClick={() => resetDeposits('M')}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded transition-colors"
+        >
+          Monthly Deposits
+        </button>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2 text-gray-700">Date Range</h3>
+        <div className="flex gap-4">
+          <input
+            type="date"
+            value={format(range.start_date, 'yyyy-MM-dd')}
+            onChange={(e) => handleFilterByDateRange({
+              ...range,
+              start_date: e.target.valueAsDate || new Date(),
+            })}
+            className="border rounded p-2"
+          />
+          <input
+            type="date"
+            value={format(range.end_date, 'yyyy-MM-dd')}
+            onChange={(e) => handleFilterByDateRange({
+              ...range,
+              end_date: e.target.valueAsDate || new Date(),
+            })}
+            className="border rounded p-2"
+          />
         </div>
       </div>
 
-      {/* Data Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedItems.length === currentItems.length && currentItems.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>DATE</TableHead>
-                <TableHead>TIME</TableHead>
-                <TableHead>EPOS</TableHead>
-                <TableHead>CASH</TableHead>
-                <TableHead>PDQ</TableHead>
-                <TableHead>DELIVERY</TableHead>
-                <TableHead>DIFFERENCE</TableHead>
-                <TableHead>KPI TOTAL</TableHead>
-                <TableHead>STATUS</TableHead>
-                <TableHead>ACTIONS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-gray-500">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              ) : (
-                currentItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedItems.includes(item.id)}
-                        onCheckedChange={(checked) => handleSelectItem(item.id, checked as boolean)}
-                      />
-                    </TableCell>
-                    <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.time}</TableCell>
-                    <TableCell>€{item.epos.toFixed(2)}</TableCell>
-                    <TableCell>€{item.cash.toFixed(2)}</TableCell>
-                    <TableCell>€{item.pdq.toFixed(2)}</TableCell>
-                    <TableCell>€{item.delivery.toFixed(2)}</TableCell>
-                    <TableCell className={item.difference >= 0 ? "text-green-600" : "text-red-600"}>
-                      €{item.difference.toFixed(2)}
-                    </TableCell>
-                    <TableCell>€{item.kpiTotal.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          item.status === "Complete" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Cashup Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filterCashup.map((cashup, index) => (
+              <tr key={index} className="hover:bg-gray-50 cursor-pointer">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {format(new Date(cashup.cashUpDate), 'MMM dd, yyyy')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      cashup.cashUpStatus === 'DRAFT'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : cashup.cashUpStatus === 'PUBLISHED'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {cashup.cashUpStatus}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  ${cashupFacade.getCashupTotals(cashup).cash.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {/* Pagination */}
-      {sampleData.length > itemsPerPage && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="text-sm text-gray-600">
-            {startIndex + 1} to {Math.min(endIndex, sampleData.length)} of {sampleData.length}
-          </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (currentPage > 1) setCurrentPage(currentPage - 1)
-                  }}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                  size="default"
-                />
-              </PaginationItem>
-
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum
-                if (totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i
-                } else {
-                  pageNum = currentPage - 2 + i
-                }
-
-                return (
-                  <PaginationItem key={pageNum}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(pageNum)
-                      }}
-                      isActive={currentPage === pageNum}
-                      size="default"
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (currentPage < totalPages) setCurrentPage(currentPage + 1)
-                  }}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                  size="default"
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="font-semibold text-gray-700">Today's Total</h3>
+          <p className="text-2xl font-bold">${summary.todayTotal.toFixed(2)}</p>
+          <p
+            className={`text-sm ${
+              summary.todayPercent >= 0 ? 'text-green-500' : 'text-red-500'
+            }`}
+          >
+            {summary.todayPercent >= 0 ? '↑' : '↓'} {Math.abs(summary.todayPercent).toFixed(2)}%
+          </p>
         </div>
-      )}
+
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="font-semibold text-gray-700">Yesterday's Total</h3>
+          <p className="text-2xl font-bold">${summary.yesterdayTotal.toFixed(2)}</p>
+          <p
+            className={`text-sm ${
+              summary.yesterdayPercent >= 0 ? 'text-green-500' : 'text-red-500'
+            }`}
+          >
+            {summary.yesterdayPercent >= 0 ? '↑' : '↓'} {Math.abs(summary.yesterdayPercent).toFixed(2)}%
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="font-semibold text-gray-700">Pending Deposits</h3>
+          <p className="text-2xl font-bold">${getTotalPendingdeposit().toFixed(2)}</p>
+        </div>
+      </div>
     </div>
-  )
-}
+  );
+};
+
+export default CashUpComponent;

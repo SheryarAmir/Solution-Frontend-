@@ -246,7 +246,7 @@ const SidebarComponent: React.FC<SidebarProps> = ({
         transition: 'all 0.2s ease-in-out',
         position: 'fixed',
         zIndex: 1000,
-        top: '56px',
+        // top: '56px',
 
       }}
     >
