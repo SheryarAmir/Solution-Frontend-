@@ -16,6 +16,7 @@ import ViewReport from "../CashManagmentModules/ViewReport/viewreport";
 import AllCashUp from "../CashManagmentModules/CashManagmentModules/AllCashUp/allcashup";
 import AllReport from "../CashManagmentModules/CashManagmentModules/AllReport/allreport";
 import CashUpSummary from "../CashManagmentModules/CashupSummary/cashupsummary";
+import Report from "../CashManagmentModules/Report/Report";
 
 // Employee Management Components
 
@@ -60,7 +61,7 @@ const AppRoutes = () => {
         <Route path="/accounting/cashup" element={<AllCashUp />} />
         <Route path="/accounting/cashup/deposit" element={<NewCashUp />} />
         <Route path="/accounting/reconciliation/home" element={<AllReport />} />
-        <Route path="/accounting/report/home" element={<AllReport />} />
+        <Route path="/accounting/report/home" element={<Report />} />
         <Route path="/accounting/safesummary" element={<CashUpSummary />} />
 
         {/* Integration Routes */}

@@ -11,8 +11,10 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
-      <ROSHeader />
-      <div className="flex">
+      <div className="flex flex-col">
+        <ROSHeader />
+      </div>
+      <div className="flex flex-col">
         <SidebarComponent 
           collapsed={sidebarCollapsed}
           onCollapsedChange={setSidebarCollapsed}

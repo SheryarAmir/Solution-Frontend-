@@ -72,7 +72,7 @@ const sidebarData = {
       {
         title: "Reports",
         icon: FileText,
-        url: "/accounting/report/home",
+        // url: "/accounting/report/home",
       },
       {
         title: "Safe Summary",

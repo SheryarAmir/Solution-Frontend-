@@ -68,7 +68,7 @@ export default function ROSHeader() {
   }
 
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-6 py-3 fixed z-50">
+    <header className="w-full bg-red-500 border-b border-gray-200 px-6 py-3 fixed">
       <div className="flex items-center justify-between max-w-full z-20">
         {/* Logo */}
         <div className="flex items-center">

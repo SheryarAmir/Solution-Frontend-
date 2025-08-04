@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, Download, Plus, Trash2 } from "lucide-react"
+import { Calendar, Download, Plus, Trash2, FileText, AlertCircle } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Card, CardContent } from "../../../components/ui/card"
 import { Checkbox } from "../../../components/ui/checkbox"
@@ -17,31 +17,81 @@ import {
   PaginationPrevious,
 } from "../../../components/ui/pagination"
 
-// Sample data - you can replace this with real data
-const sampleData = Array.from({ length: 25 }, (_, i) => ({
-  id: i + 1,
-  date: `2025-01-${String(i + 1).padStart(2, "0")}`,
-  time: `${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
-  epos: Math.floor(Math.random() * 1000),
-  cash: Math.floor(Math.random() * 500),
-  pdq: Math.floor(Math.random() * 800),
-  delivery: Math.floor(Math.random() * 200),
-  difference: Math.floor(Math.random() * 100) - 50,
-  kpiTotal: Math.floor(Math.random() * 1500),
-  status: Math.random() > 0.5 ? "Complete" : "Pending",
-}))
+// Enhanced mock data with more realistic values
+const generateMockData = () => {
+  const statuses = ["Complete", "Pending", "Draft", "Banked"]
+  const statusWeights = [0.4, 0.3, 0.2, 0.1] // 40% Complete, 30% Pending, 20% Draft, 10% Banked
+  
+  return Array.from({ length: 25 }, (_, i) => {
+    const randomStatus = Math.random()
+    let statusIndex = 0
+    let cumulativeWeight = 0
+    for (let j = 0; j < statusWeights.length; j++) {
+      cumulativeWeight += statusWeights[j]
+      if (randomStatus <= cumulativeWeight) {
+        statusIndex = j
+        break
+      }
+    }
+    
+    const epos = Math.floor(Math.random() * 2000) + 500 // €500-2500
+    const cash = Math.floor(Math.random() * 800) + 200 // €200-1000
+    const pdq = Math.floor(Math.random() * 1200) + 300 // €300-1500
+    const delivery = Math.floor(Math.random() * 400) + 50 // €50-450
+    const kpiTotal = epos + cash + pdq + delivery
+    const difference = Math.floor(Math.random() * 200) - 100 // €-100 to €100
+    
+    return {
+      id: i + 1,
+      date: `2025-01-${String(i + 1).padStart(2, "0")}`,
+      time: `${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
+      epos,
+      cash,
+      pdq,
+      delivery,
+      difference,
+      kpiTotal,
+      status: statuses[statusIndex],
+    }
+  })
+}
+
+const sampleData = generateMockData()
 
 export default function CashUpSheets() {
   const [selectedItems, setSelectedItems] = useState<number[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [data, setData] = useState(sampleData)
   const itemsPerPage = 10
 
+  // Calculate summary statistics from actual data
+  const calculateSummaryStats = () => {
+    const allCashUp = data.length
+    const drafts = data.filter(item => item.status === "Draft").length
+    const pendingDeposits = data.filter(item => item.status === "Pending").length
+    const banked = data.filter(item => item.status === "Banked").length
+    
+    const allCashUpAmount = data.reduce((sum, item) => sum + item.kpiTotal, 0)
+    const draftsAmount = data.filter(item => item.status === "Draft").reduce((sum, item) => sum + item.kpiTotal, 0)
+    const pendingAmount = data.filter(item => item.status === "Pending").reduce((sum, item) => sum + item.kpiTotal, 0)
+    const bankedAmount = data.filter(item => item.status === "Banked").reduce((sum, item) => sum + item.kpiTotal, 0)
+    
+    return [
+      { title: "ALL CASHUP", amount: `€ ${allCashUpAmount.toFixed(2)}`, count: allCashUp },
+      { title: "DRAFTS", amount: `€ ${draftsAmount.toFixed(2)}`, count: drafts },
+      { title: "PENDING DEPOSITS", amount: `€ ${pendingAmount.toFixed(2)}`, count: pendingDeposits },
+      { title: "BANKED", amount: `€ ${bankedAmount.toFixed(2)}`, count: banked },
+    ]
+  }
+
+  const summaryCards = calculateSummaryStats()
+
   // Calculate pagination
-  const totalPages = Math.ceil(sampleData.length / itemsPerPage)
+  const totalPages = Math.ceil(data.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const currentItems = sampleData.slice(startIndex, endIndex)
+  const currentItems = data.slice(startIndex, endIndex)
 
   // Get current and next month dates
   const currentDate = new Date()
@@ -63,12 +113,27 @@ export default function CashUpSheets() {
     }
   }
 
-  const summaryCards = [
-    { title: "ALL CASHUP", amount: "€ 0.00", count: 0 },
-    { title: "DRAFTS", amount: "€ 0.00", count: 0 },
-    { title: "PENDING DEPOSITS", amount: "€ 0.00", count: 0 },
-    { title: "BANKED", amount: "€ 0.00", count: 0 },
-  ]
+  const handleDeleteSelected = () => {
+    if (selectedItems.length > 0) {
+      setData(data.filter(item => !selectedItems.includes(item.id)))
+      setSelectedItems([])
+      // Reset to first page if current page becomes empty
+      if (currentPage > Math.ceil((data.length - selectedItems.length) / itemsPerPage)) {
+        setCurrentPage(1)
+      }
+    }
+  }
+
+  const handleClearAllData = () => {
+    setData([])
+    setSelectedItems([])
+    setCurrentPage(1)
+  }
+
+  const handleAddMockData = () => {
+    const newData = generateMockData()
+    setData([...data, ...newData])
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -115,27 +180,44 @@ export default function CashUpSheets() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end items-center gap-2 mb-4">
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4" />
-        </Button>
-        <Button variant="secondary" size="sm">
-          GENERATE JOURNALS
-        </Button>
-        <Button variant="destructive" size="sm">
-          <Trash2 className="h-4 w-4 mr-1" />
-          DELETE
-        </Button>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          ADD New
-        </Button>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4" />
-        </Button>
-        <div className="flex flex-col items-end text-xs text-blue-600">
-          <button className="hover:underline">Download Template</button>
-          <button className="hover:underline">more</button>
+      <div className="flex justify-between items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleAddMockData}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Mock Data
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleClearAllData}>
+            <Trash2 className="h-4 w-4 mr-1" />
+            Clear All
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="secondary" size="sm">
+            GENERATE JOURNALS
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleDeleteSelected}
+            disabled={selectedItems.length === 0}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            DELETE ({selectedItems.length})
+          </Button>
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            ADD New
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4" />
+          </Button>
+          <div className="flex flex-col items-end text-xs text-blue-600">
+            <button className="hover:underline">Download Template</button>
+            <button className="hover:underline">more</button>
+          </div>
         </div>
       </div>
 
@@ -166,8 +248,26 @@ export default function CashUpSheets() {
             <TableBody>
               {currentItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-gray-500">
-                    No data available
+                  <TableCell colSpan={11} className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                        <FileText className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Cash Up Data</h3>
+                        <p className="text-gray-500 mb-4">There are no cash up sheets available. Create your first cash up sheet to get started.</p>
+                        <div className="flex items-center justify-center gap-2">
+                          <Button size="sm" onClick={handleAddMockData}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Sample Data
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Plus className="h-4 w-4 mr-1" />
+                            Create New
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -192,7 +292,13 @@ export default function CashUpSheets() {
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
-                          item.status === "Complete" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                          item.status === "Complete" 
+                            ? "bg-green-100 text-green-800" 
+                            : item.status === "Pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : item.status === "Draft"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
                         }`}
                       >
                         {item.status}
@@ -212,10 +318,10 @@ export default function CashUpSheets() {
       </Card>
 
       {/* Pagination */}
-      {sampleData.length > itemsPerPage && (
+      {data.length > itemsPerPage && (
         <div className="flex justify-between items-center mt-4">
           <div className="text-sm text-gray-600">
-            {startIndex + 1} to {Math.min(endIndex, sampleData.length)} of {sampleData.length}
+            {startIndex + 1} to {Math.min(endIndex, data.length)} of {data.length}
           </div>
           <Pagination>
             <PaginationContent>
